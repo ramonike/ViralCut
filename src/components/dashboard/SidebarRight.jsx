@@ -95,6 +95,38 @@ export function SidebarRight({ state, actions }) {
                 </CardContent>
             </Card>
 
+            {/* Recent Uploads (Channel) */}
+            <Card className="bg-viral-800 border-viral-700 shadow-lg shadow-viral-900/50">
+                <CardHeader className="pb-2 border-b border-viral-700/50">
+                    <h3 className="font-bold text-viral-neon text-lg flex items-center gap-2">
+                        <FileCheck className="w-5 h-5" /> Últimos do Canal
+                    </h3>
+                </CardHeader>
+                <CardContent className="pt-4">
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                        {(!state.recentUploads || state.recentUploads.length === 0) && (
+                            <div className="text-center py-4 text-slate-500">
+                                <p className="text-xs">Nenhum vídeo encontrado.</p>
+                            </div>
+                        )}
+                        {state.recentUploads && state.recentUploads.map((video) => (
+                            <div key={video.id} className="bg-viral-900/50 p-2 rounded-xl border border-viral-700 flex items-center gap-3 group hover:border-viral-500 transition-colors">
+                                <div className="w-16 h-9 rounded overflow-hidden flex-shrink-0 bg-black">
+                                    <img src={video.thumbnails?.default?.url} alt={video.title} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="overflow-hidden flex-1">
+                                    <p className="font-semibold text-slate-200 text-xs truncate" title={video.title}>{video.title}</p>
+                                    <div className="flex justify-between items-center mt-1">
+                                        <p className="text-[10px] text-viral-400">{new Date(video.publishedAt).toLocaleDateString()}</p>
+                                        <a href={video.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver</a>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Calendar */}
             <Card className="bg-viral-800 border-viral-700 shadow-lg">
                 <CardHeader className="pb-2 border-b border-viral-700/50">

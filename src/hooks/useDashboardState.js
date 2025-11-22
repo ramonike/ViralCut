@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { uploadVideo } from "../api/upload";
-import { fetchChannelDetails } from "../api/youtube";
+import { fetchChannelDetails, fetchChannelVideos } from "../api/youtube";
 
 const STORAGE_KEY = "viralcuts_workflow_v1";
 
@@ -48,6 +48,7 @@ const defaultData = {
     analytics: {
         views24h: [],
     },
+    recentUploads: [], // Store fetched channel videos
     auth: {
         youtubeToken: null,
         youtubeTokenExpiresAt: null,
@@ -123,6 +124,18 @@ export function useDashboardState() {
                 })
                 .catch(err => {
                     console.error("[useDashboardState] Error fetching stats:", err);
+                });
+
+            // Also fetch recent videos
+            fetchChannelVideos(state.auth.youtubeToken)
+                .then(videos => {
+                    console.log("[useDashboardState] Received videos:", videos?.length);
+                    if (videos) {
+                        setState(prev => ({ ...prev, recentUploads: videos }));
+                    }
+                })
+                .catch(err => {
+                    console.error("[useDashboardState] Error fetching videos:", err);
                 });
         } else {
             console.log("[useDashboardState] No token, clearing channelStats");
