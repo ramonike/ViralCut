@@ -54,6 +54,7 @@ export async function fetchChannelDetails(token) {
         if (data.items && data.items.length > 0) {
             const item = data.items[0];
             const channelData = {
+                id: item.id,
                 ...item.snippet,
                 statistics: item.statistics,
                 brandingSettings: item.brandingSettings,
@@ -158,5 +159,131 @@ export async function fetchChannelVideos(token, maxResults = 50) {
     } catch (error) {
         console.error("[YouTube API] Failed to fetch videos:", error);
         throw error;
+    }
+}
+
+export async function fetchChannelAnalytics(token) {
+    console.log("[YouTube API] fetchChannelAnalytics called");
+
+    if (!token || token === "MOCK_TOKEN") {
+        console.log("[YouTube API] Using MOCK analytics");
+        return [
+            { name: "Seg", views: 150 },
+            { name: "Ter", views: 300 },
+            { name: "Qua", views: 450 },
+            { name: "Qui", views: 600 },
+            { name: "Sex", views: 400 },
+            { name: "Sáb", views: 700 },
+            { name: "Dom", views: 850 },
+        ];
+    }
+
+    try {
+        // Calculate dates: last 7 days
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - 7);
+
+        const formatDate = (date) => date.toISOString().split('T')[0];
+
+        const url = `https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=${formatDate(startDate)}&endDate=${formatDate(endDate)}&metrics=views&dimensions=day&sort=day`;
+
+        console.log("[YouTube API] Fetching analytics from:", url);
+
+        const response = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[YouTube API] Analytics error:", errorText);
+            throw new Error(`Analytics API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("[YouTube API] Analytics data:", data);
+
+        // Transform rows: [day, views] -> { name: "DD/MM", views: 123 }
+        if (data.rows && data.rows.length > 0) {
+            return data.rows.map(row => {
+                const [dateStr, views] = row;
+                // Format dateStr (YYYY-MM-DD) to DD/MM
+                const [year, month, day] = dateStr.split('-');
+                return {
+                    name: `${day}/${month}`,
+                    views: views
+                };
+            });
+        }
+
+        return [];
+    } catch (error) {
+        console.error("[YouTube API] Failed to fetch analytics:", error);
+        throw error;
+    }
+}
+
+export async function searchVideos(token, query = "ciência curiosidades podcast") {
+    console.log("[YouTube API] searchVideos called with query:", query);
+
+    if (!token || token === "MOCK_TOKEN") {
+        console.log("[YouTube API] Using MOCK search results");
+        return [
+            {
+                id: "mock_search_1",
+                title: "O Universo Explicado - Podcast Ciência #42",
+                channelTitle: "Ciência Todo Dia",
+                thumbnails: { medium: { url: "https://picsum.photos/seed/science1/320/180" } },
+                url: "https://youtube.com/watch?v=mock_search_1"
+            },
+            {
+                id: "mock_search_2",
+                title: "Mistérios do Cérebro Humano",
+                channelTitle: "NeuroCiência",
+                thumbnails: { medium: { url: "https://picsum.photos/seed/science2/320/180" } },
+                url: "https://youtube.com/watch?v=mock_search_2"
+            },
+            {
+                id: "mock_search_3",
+                title: "Física Quântica para Iniciantes",
+                channelTitle: "Física Fácil",
+                thumbnails: { medium: { url: "https://picsum.photos/seed/science3/320/180" } },
+                url: "https://youtube.com/watch?v=mock_search_3"
+            }
+        ];
+    }
+
+    try {
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&videoDuration=medium`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/json",
+                },
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Search API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("[YouTube API] Search results:", data);
+
+        return (data.items || []).map(item => ({
+            id: item.id.videoId,
+            title: item.snippet.title,
+            channelTitle: item.snippet.channelTitle,
+            thumbnails: item.snippet.thumbnails,
+            url: `https://youtube.com/watch?v=${item.id.videoId}`
+        }));
+
+    } catch (error) {
+        console.error("[YouTube API] Failed to search videos:", error);
+        return [];
     }
 }

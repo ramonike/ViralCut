@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { GoogleAuthButton } from "./GoogleAuthButton";
-import { User, Youtube, BarChart, Settings, LogOut } from "lucide-react";
+import { User, Youtube, BarChart, Settings, LogOut, RefreshCw } from "lucide-react";
 
 export function ProfileSection({ state, actions }) {
     const { settings, auth, channelStats } = state;
@@ -56,6 +56,11 @@ export function ProfileSection({ state, actions }) {
                                     {channelStats.customUrl}
                                 </span>
                             )}
+                            {channelStats?.id && (
+                                <span className="text-slate-500 text-xs bg-black/20 px-2 py-1 rounded font-mono" title="ID do Canal">
+                                    ID: {channelStats.id}
+                                </span>
+                            )}
                             {isConnected ? (
                                 <span className="flex items-center gap-1 text-green-400 text-xs font-bold bg-green-900/30 px-2 py-1 rounded border border-green-500/30 backdrop-blur-sm">
                                     <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> CONECTADO
@@ -69,13 +74,23 @@ export function ProfileSection({ state, actions }) {
                     {/* Actions */}
                     <div className="mb-2">
                         {isConnected ? (
-                            <Button
-                                variant="destructive"
-                                onClick={() => setYouTubeToken({ access_token: null, expires_in: 0 })}
-                                className="bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 backdrop-blur-sm"
-                            >
-                                <LogOut className="w-4 h-4 mr-2" /> Desconectar
-                            </Button>
+                            <div className="flex flex-col gap-2 items-end">
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => setYouTubeToken({ access_token: null, expires_in: 0 })}
+                                    className="bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 backdrop-blur-sm"
+                                >
+                                    <LogOut className="w-4 h-4 mr-2" /> Desconectar
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-xs text-slate-400 hover:text-white px-2"
+                                    onClick={() => actions.refreshChannelStats()}
+                                >
+                                    <RefreshCw className="w-3 h-3 mr-1" /> Atualizar Dados
+                                </Button>
+                            </div>
                         ) : (
                             <div className="flex flex-col gap-2">
                                 <GoogleAuthButton
@@ -116,7 +131,7 @@ export function ProfileSection({ state, actions }) {
                     <Card className="bg-viral-800 border-viral-700">
                         <CardContent className="p-6 flex items-center gap-4">
                             <div className="p-3 bg-red-500/10 rounded-lg text-red-500">
-                                <Youtube className="w-8 h-8" />
+                                <User className="w-8 h-8" />
                             </div>
                             <div>
                                 <p className="text-slate-400 text-xs uppercase font-bold tracking-wider">Inscritos</p>
@@ -142,7 +157,7 @@ export function ProfileSection({ state, actions }) {
                     <Card className="bg-viral-800 border-viral-700">
                         <CardContent className="p-6 flex items-center gap-4">
                             <div className="p-3 bg-purple-500/10 rounded-lg text-purple-500">
-                                <User className="w-8 h-8" />
+                                <Youtube className="w-8 h-8" />
                             </div>
                             <div>
                                 <p className="text-slate-400 text-xs uppercase font-bold tracking-wider">Vídeos</p>

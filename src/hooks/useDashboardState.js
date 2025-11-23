@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { uploadVideo } from "../api/upload";
-import { fetchChannelDetails, fetchChannelVideos } from "../api/youtube";
+import { fetchChannelDetails, fetchChannelVideos, fetchChannelAnalytics, searchVideos } from "../api/youtube";
+import { uploadToOpus, checkProjectStatus, getClips, createProjectFromUrl } from "../api/opus";
 
 const STORAGE_KEY = "viralcuts_workflow_v1";
 
@@ -12,6 +13,10 @@ const defaultData = {
         dailyGoal: 4,
         ctaText: "🚀 Domine o Método ViralCuts",
         ctaLink: "https://seu-curso-ou-metodo.com",
+        opusApiKey: "", // New setting
+    },
+    pipeline: {
+        jobs: [], // { id, status, originalName, clips: [] }
     },
     checklists: [
         {
@@ -49,6 +54,7 @@ const defaultData = {
         views24h: [],
     },
     recentUploads: [], // Store fetched channel videos
+    suggestions: [], // Store suggested videos for cuts
     auth: {
         youtubeToken: null,
         youtubeTokenExpiresAt: null,
@@ -68,7 +74,9 @@ function loadState() {
             ...loaded,
             history: loaded.history || {},
             channelStats: loaded.channelStats || null,
-            settings: { ...defaultData.settings, ...(loaded.settings || {}) }
+            channelStats: loaded.channelStats || null,
+            settings: { ...defaultData.settings, ...(loaded.settings || {}) },
+            pipeline: loaded.pipeline || { jobs: [] }
         };
     } catch (e) {
         console.error("Failed to load state", e);
@@ -136,6 +144,33 @@ export function useDashboardState() {
                 })
                 .catch(err => {
                     console.error("[useDashboardState] Error fetching videos:", err);
+                });
+
+            // Fetch Analytics
+            fetchChannelAnalytics(state.auth.youtubeToken)
+                .then(data => {
+                    console.log("[useDashboardState] Received analytics:", data?.length);
+                    if (data && data.length > 0) {
+                        setState(prev => ({
+                            ...prev,
+                            analytics: { ...prev.analytics, views24h: data }
+                        }));
+                    }
+                })
+                .catch(err => {
+                    console.error("[useDashboardState] Error fetching analytics:", err);
+                });
+
+            // Fetch Suggestions
+            searchVideos(state.auth.youtubeToken, "podcast ciência curiosidades")
+                .then(videos => {
+                    console.log("[useDashboardState] Received suggestions:", videos?.length);
+                    if (videos) {
+                        setState(prev => ({ ...prev, suggestions: videos }));
+                    }
+                })
+                .catch(err => {
+                    console.error("[useDashboardState] Error fetching suggestions:", err);
                 });
         } else {
             console.log("[useDashboardState] No token, clearing channelStats");
@@ -421,6 +456,108 @@ export function useDashboardState() {
         }));
     }
 
+    async function startOpusJob(input) {
+        const apiKey = state.settings.opusApiKey;
+        try {
+            let project;
+            if (typeof input === 'string') {
+                // It's a URL
+                project = await createProjectFromUrl(input, apiKey);
+            } else {
+                // It's a File
+                project = await uploadToOpus(input, apiKey);
+            }
+
+            setState(prev => ({
+                ...prev,
+                pipeline: {
+                    ...prev.pipeline,
+                    jobs: [project, ...prev.pipeline.jobs]
+                }
+            }));
+            return project;
+        } catch (e) {
+            console.error("Opus upload failed", e);
+            throw e;
+        }
+    }
+
+    async function checkOpusJob(jobId) {
+        const apiKey = state.settings.opusApiKey;
+        const job = state.pipeline.jobs.find(j => j.projectId === jobId);
+        if (!job) return;
+
+        try {
+            const statusData = await checkProjectStatus(jobId, apiKey);
+
+            let clips = [];
+            if (statusData.status === "done") {
+                clips = await getClips(jobId, apiKey);
+            }
+
+            setState(prev => ({
+                ...prev,
+                pipeline: {
+                    ...prev.pipeline,
+                    jobs: prev.pipeline.jobs.map(j =>
+                        j.projectId === jobId
+                            ? { ...j, status: statusData.status, clips: clips.length ? clips : j.clips }
+                            : j
+                    )
+                }
+            }));
+        } catch (e) {
+            console.error("Opus check failed", e);
+        }
+    }
+
+    function removeOpusJob(projectId) {
+        setState(prev => ({
+            ...prev,
+            pipeline: {
+                ...prev.pipeline,
+                jobs: prev.pipeline.jobs.filter(j => j.projectId !== projectId)
+            }
+        }));
+    }
+
+    async function refreshChannelStats() {
+        if (!state.auth.youtubeToken) return;
+
+        try {
+            const stats = await fetchChannelDetails(state.auth.youtubeToken);
+            if (stats) {
+                setState(prev => ({ ...prev, channelStats: stats }));
+            }
+
+            // Also refresh videos
+            const videos = await fetchChannelVideos(state.auth.youtubeToken);
+            if (videos) {
+                setState(prev => ({ ...prev, recentUploads: videos }));
+            }
+
+            // Also refresh analytics
+            const analytics = await fetchChannelAnalytics(state.auth.youtubeToken);
+            if (analytics && analytics.length > 0) {
+                setState(prev => ({
+                    ...prev,
+                    analytics: { ...prev.analytics, views24h: analytics }
+                }));
+            }
+
+            // Also refresh suggestions
+            const suggestions = await searchVideos(state.auth.youtubeToken, "podcast ciência curiosidades");
+            if (suggestions) {
+                setState(prev => ({ ...prev, suggestions: suggestions }));
+            }
+
+            return true;
+        } catch (e) {
+            console.error("Failed to refresh stats", e);
+            return false;
+        }
+    }
+
     function resetState() {
         setState(defaultData);
     }
@@ -439,7 +576,11 @@ export function useDashboardState() {
             setYouTubeToken,
             resetState,
             resetChecklist,
-            removeHistoryItem, // New action
+            removeHistoryItem,
+            startOpusJob,
+            checkOpusJob,
+            removeOpusJob,
+            refreshChannelStats,
         },
     };
 }

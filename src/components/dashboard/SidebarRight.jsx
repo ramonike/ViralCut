@@ -1,24 +1,24 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
-import { UploadCloud, FileCheck, Trash2, Calendar as CalendarIcon, BarChart2, CheckCircle2 } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { UploadCloud, FileCheck, Trash2, Calendar as CalendarIcon, BarChart2, CheckCircle2, Sparkles, ExternalLink, RefreshCw, Eye } from "lucide-react";
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 export function SidebarRight({ state, actions }) {
     const { uploadQueue, analytics, history = {} } = state; // Default history to empty obj
     const { markQueueStatus, removeQueueItem } = actions;
     const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
 
-    const analyticsData = analytics.views24h.length
+    const analyticsData = (analytics.views24h && analytics.views24h.length > 0)
         ? analytics.views24h
         : [
-            { name: "Seg", views: 120 },
-            { name: "Ter", views: 340 },
-            { name: "Qua", views: 560 },
-            { name: "Qui", views: 890 },
-            { name: "Sex", views: 420 },
-            { name: "Sáb", views: 600 },
-            { name: "Dom", views: 750 },
+            { name: "Seg", views: 0 },
+            { name: "Ter", views: 0 },
+            { name: "Qua", views: 0 },
+            { name: "Qui", views: 0 },
+            { name: "Sex", views: 0 },
+            { name: "Sáb", views: 0 },
+            { name: "Dom", views: 0 },
         ];
 
     // Calendar Logic
@@ -69,7 +69,7 @@ export function SidebarRight({ state, actions }) {
                                     )}
                                     {q.status === "done" && (
                                         <span className="text-xs text-green-400 flex items-center gap-1">
-                                            ✓ Concluído
+                                            <CheckCircle2 className="w-3 h-3" /> Concluído
                                         </span>
                                     )}
                                     {q.status === "error" && (
@@ -95,37 +95,82 @@ export function SidebarRight({ state, actions }) {
                 </CardContent>
             </Card>
 
-            {/* Recent Uploads (Channel) */}
-            <Card className="bg-viral-800 border-viral-700 shadow-lg shadow-viral-900/50">
-                <CardHeader className="pb-2 border-b border-viral-700/50">
-                    <h3 className="font-bold text-viral-neon text-lg flex items-center gap-2">
-                        <FileCheck className="w-5 h-5" /> Últimos do Canal
+            {/* Sugestões para Cortes */}
+            <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-slate-100 font-semibold flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        Sugestões para Cortes
                     </h3>
-                </CardHeader>
-                <CardContent className="pt-4">
-                    <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                        {(!state.recentUploads || state.recentUploads.length === 0) && (
-                            <div className="text-center py-4 text-slate-500">
-                                <p className="text-xs">Nenhum vídeo encontrado.</p>
-                            </div>
-                        )}
-                        {state.recentUploads && state.recentUploads.map((video) => (
-                            <div key={video.id} className="bg-viral-900/50 p-2 rounded-xl border border-viral-700 flex items-center gap-3 group hover:border-viral-500 transition-colors">
-                                <div className="w-16 h-9 rounded overflow-hidden flex-shrink-0 bg-black">
-                                    <img src={video.thumbnails?.default?.url} alt={video.title} className="w-full h-full object-cover" />
-                                </div>
-                                <div className="overflow-hidden flex-1">
-                                    <p className="font-semibold text-slate-200 text-xs truncate" title={video.title}>{video.title}</p>
-                                    <div className="flex justify-between items-center mt-1">
-                                        <p className="text-[10px] text-viral-400">{new Date(video.publishedAt).toLocaleDateString()}</p>
-                                        <a href={video.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:underline">Ver</a>
+                    <button
+                        onClick={() => actions.refreshChannelStats()}
+                        className="text-xs text-slate-500 hover:text-purple-400 transition-colors"
+                        title="Atualizar sugestões"
+                    >
+                        <RefreshCw className="w-3 h-3" />
+                    </button>
+                </div>
+
+                <div className="space-y-3">
+                    {state.suggestions && state.suggestions.length > 0 ? (
+                        state.suggestions.map((video) => (
+                            <div
+                                key={video.id}
+                                className="group relative bg-slate-800/30 rounded-lg p-2 border border-slate-700/30 hover:border-purple-500/30 transition-all hover:bg-slate-800/50 cursor-grab active:cursor-grabbing"
+                                draggable="true"
+                                onDragStart={(e) => {
+                                    e.dataTransfer.setData("text/plain", video.url);
+                                    e.dataTransfer.setData("text/uri-list", video.url);
+                                    e.dataTransfer.effectAllowed = "copy";
+                                }}
+                            >
+                                <div className="flex gap-3 pointer-events-none">
+                                    <div className="relative w-24 h-14 rounded overflow-hidden flex-shrink-0 bg-slate-900">
+                                        <img
+                                            src={video.thumbnails?.medium?.url}
+                                            alt={video.title}
+                                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-slate-200 text-xs font-medium leading-snug line-clamp-2 group-hover:text-purple-300 transition-colors">
+                                            {video.title}
+                                        </h4>
+                                        <p className="text-slate-500 text-[10px] mt-1 truncate">
+                                            {video.channelTitle}
+                                        </p>
                                     </div>
                                 </div>
+                                <a
+                                    href={video.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[1px] rounded-lg"
+                                >
+                                    <ExternalLink className="w-5 h-5 text-white drop-shadow-lg" />
+                                </a>
                             </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
+                        ))
+                    ) : (
+                        <div className="text-center py-6 text-slate-500 text-xs">
+                            <p>Nenhuma sugestão encontrada.</p>
+                            <button
+                                onClick={() => actions.refreshChannelStats()}
+                                className="mt-2 text-purple-400 hover:text-purple-300 underline"
+                            >
+                                Tentar novamente
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-slate-800/50">
+                    <p className="text-[10px] text-slate-500 text-center">
+                        Baseado em "ciência, podcast, curiosidades"
+                    </p>
+                </div>
+            </div>
 
             {/* Calendar */}
             <Card className="bg-viral-800 border-viral-700 shadow-lg">
@@ -206,18 +251,10 @@ export function SidebarRight({ state, actions }) {
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-slate-500 font-semibold uppercase">Vídeos Publicados ({selectedDayData.uploadedVideos.length})</p>
                                     {selectedDayData.uploadedVideos.map((video, idx) => (
-                                        <div key={idx} className="flex items-start justify-between gap-2 text-xs text-slate-300 bg-viral-900/80 p-2 rounded border border-viral-800 group">
-                                            <div className="flex gap-2 overflow-hidden">
+                                        <div key={idx} className="flex items-center justify-between gap-2 text-xs text-slate-300 bg-viral-900/80 p-2 rounded border border-viral-800 group">
+                                            <div className="flex gap-2 overflow-hidden items-center">
                                                 <span className="font-bold text-viral-neon min-w-[15px]">{idx + 1}.</span>
-                                                <div className="overflow-hidden">
-                                                    <p className="truncate font-medium text-white" title={video.title}>{video.title}</p>
-                                                    <div className="flex gap-2 text-[10px] text-slate-400">
-                                                        <span>{video.platform}</span>
-                                                        {video.url && (
-                                                            <a href={video.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Ver Link</a>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                                <p className="truncate font-medium text-white" title={video.title}>{video.title}</p>
                                             </div>
                                             <button
                                                 onClick={() => actions.removeHistoryItem(selectedDate, video.id)}
