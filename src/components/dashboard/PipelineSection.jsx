@@ -1,150 +1,153 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Link as LinkIcon, Settings, RefreshCw, Plus, Trash2 } from "lucide-react";
+import { Link as LinkIcon, Eye, ExternalLink, LayoutGrid, List } from "lucide-react";
 
 export function PipelineSection({ state, actions }) {
     const { addToUploadQueue } = actions;
     const { settings, pipeline } = state;
-
-    const handleAddClip = (clip) => {
-        addToUploadQueue({
-            title: clip.title,
-            source: "opus",
-            platform: "YouTube Shorts",
-            file: null, // In real app, we might download it first
-            url: clip.url
-        });
-    };
+    const [viewMode, setViewMode] = useState("list"); // 'list' | 'grid'
 
     return (
-        <div className="space-y-6">
+        <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Link Drop Zone - Vizard.ai */}
-            <Card className="bg-viral-800 border-viral-700">
-                <CardHeader className="pb-2 border-b border-viral-700/50">
-                    <h3 className="font-bold text-blue-400 text-lg flex items-center gap-2">
-                        <LinkIcon className="w-5 h-5" /> Novo Projeto (Vizard.ai)
-                    </h3>
-                </CardHeader>
-                <CardContent className="pt-4">
-                    <div
-                        className="border-2 border-dashed border-viral-600 rounded-xl p-8 text-center hover:bg-viral-900/50 transition-colors relative group cursor-pointer"
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={async (e) => {
-                            e.preventDefault();
-                            const text = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
-                            if (text) {
-                                try {
-                                    await navigator.clipboard.writeText(text);
-
-                                    // Explicit instruction to user
-                                    alert(
-                                        "LINK COPIADO COM SUCESSO! 📋\n\n" +
-                                        "O Vizard.ai não permite colar automaticamente.\n\n" +
-                                        "1. A página do Vizard abrirá em uma nova aba.\n" +
-                                        "2. Clique no campo de vídeo.\n" +
-                                        "3. Pressione CTRL+V para colar o link."
-                                    );
-
-                                    window.open("https://vizard.ai/workspace", "_blank");
-                                } catch (err) {
-                                    console.error("Failed to copy:", err);
-                                    prompt("Não foi possível copiar automaticamente. Copie o link abaixo:", text);
-                                    window.open("https://vizard.ai/workspace", "_blank");
-                                }
+            <div className="glass-panel rounded-2xl p-1">
+                <div className="bg-surface-900/50 rounded-xl p-6 border border-dashed border-surface-700/50 hover:border-primary/50 hover:bg-surface-800/50 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+                    onClick={() => window.open("https://vizard.ai/workspace", "_blank")}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={async (e) => {
+                        e.preventDefault();
+                        const text = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+                        if (text) {
+                            try {
+                                await navigator.clipboard.writeText(text);
+                                alert("LINK COPIADO! 📋\nCole no Vizard.ai (Ctrl+V).");
+                                window.open("https://vizard.ai/workspace", "_blank");
+                            } catch (err) {
+                                prompt("Copie o link:", text);
+                                window.open("https://vizard.ai/workspace", "_blank");
                             }
-                        }}
-                        onClick={() => window.open("https://vizard.ai/workspace", "_blank")}
-                    >
-                        <div className="flex flex-col items-center gap-2 pointer-events-none">
-                            <div className="w-16 h-16 rounded-full bg-viral-900/80 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <LinkIcon className="w-8 h-8 text-viral-neon" />
-                            </div>
-                            <p className="text-slate-200 font-medium text-lg">Arraste um link do YouTube aqui</p>
-                            <p className="text-sm text-slate-500 max-w-md mx-auto">
-                                Solte para <strong>COPIAR</strong> o link.
-                                <br />
-                                <span className="text-xs opacity-70">Depois, cole (Ctrl+V) no Vizard.ai para criar os cortes.</span>
+                        }
+                    }}
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                    <div className="flex flex-col items-center gap-4 relative z-10">
+                        <div className="w-16 h-16 rounded-2xl bg-surface-800 shadow-lg shadow-black/20 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-surface-700">
+                            <LinkIcon className="w-8 h-8 text-primary group-hover:text-primary-light transition-colors" />
+                        </div>
+                        <div className="text-center space-y-1">
+                            <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors">
+                                Novo Projeto Vizard.ai
+                            </h3>
+                            <p className="text-sm text-slate-400 max-w-xs mx-auto">
+                                Arraste um link do YouTube aqui para copiar e abrir o editor.
                             </p>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
-            {/* Active Jobs */}
+            {/* Recent YouTube Videos */}
             <div className="space-y-4">
-                <h3 className="font-bold text-slate-300 text-lg">Projetos Recentes</h3>
-                {pipeline.jobs.length === 0 && (
-                    <p className="text-slate-500 text-sm italic">Nenhum projeto iniciado.</p>
-                )}
-                {pipeline.jobs.map((job) => (
-                    <Card key={job.projectId} className="bg-viral-800 border-viral-700 overflow-hidden">
-                        <div className="p-4 flex items-center justify-between border-b border-viral-700/50 bg-viral-900/30">
-                            <div>
-                                <p className="font-bold text-slate-200">{job.originalName}</p>
-                                <p className="text-xs text-slate-500">ID: {job.projectId}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className={`text-xs px-2 py-1 rounded-full border ${job.status === 'done'
-                                    ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                                    : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                                    }`}>
-                                    {job.status === 'done' ? 'Concluído' : 'Processando...'}
-                                </span>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => checkOpusJob(job.projectId)}
-                                    disabled={job.status === 'done'}
-                                >
-                                    <RefreshCw className={`w-4 h-4 ${job.status !== 'done' ? '' : 'text-slate-600'}`} />
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => actions.removeOpusJob(job.projectId)}
-                                    className="text-slate-500 hover:text-red-400"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        </div>
+                <div className="flex items-center justify-between px-1">
+                    <h3 className="font-bold text-slate-200 text-lg flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        Vídeos Publicados
+                    </h3>
+                    <div className="flex bg-surface-800/50 p-1 rounded-lg border border-surface-700/50 backdrop-blur-sm">
+                        <button
+                            onClick={() => setViewMode("list")}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === "list" ? "bg-surface-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewMode("grid")}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === "grid" ? "bg-surface-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"}`}
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
 
-                        {/* Clips Result */}
-                        {job.clips && job.clips.length > 0 && (
-                            <div className="p-4 bg-viral-900/50">
-                                <p className="text-xs text-slate-400 mb-3 uppercase font-bold">Cortes Gerados ({job.clips.length})</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {job.clips.map((clip) => (
-                                        <div key={clip.id} className="flex gap-3 bg-viral-800 p-2 rounded-lg border border-viral-700 hover:border-viral-500 transition-colors">
-                                            <div className="w-20 h-28 bg-black rounded overflow-hidden flex-shrink-0">
-                                                <img src={clip.thumbnail} alt="" className="w-full h-full object-cover" />
-                                            </div>
-                                            <div className="flex-1 flex flex-col justify-between py-1">
-                                                <div>
-                                                    <div className="flex justify-between items-start">
-                                                        <p className="font-semibold text-sm text-slate-200 line-clamp-2" title={clip.title}>{clip.title}</p>
-                                                        <span className="text-[10px] font-bold text-green-400 bg-green-900/30 px-1 rounded">{clip.score}</span>
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    size="sm"
-                                                    className="w-full mt-2 h-8 text-xs"
-                                                    variant="secondary"
-                                                    onClick={() => handleAddClip(clip)}
-                                                >
-                                                    <Plus className="w-3 h-3 mr-1" /> Adicionar à Fila
-                                                </Button>
-                                            </div>
+                {(!state.recentUploads || state.recentUploads.length === 0) ? (
+                    <div className="glass-panel rounded-xl p-8 text-center space-y-3">
+                        <div className="w-12 h-12 bg-surface-800 rounded-full flex items-center justify-center mx-auto text-slate-600">
+                            <LayoutGrid className="w-6 h-6" />
+                        </div>
+                        <p className="text-slate-400 font-medium">Nenhum vídeo encontrado</p>
+                        <p className="text-xs text-slate-500">Conecte sua conta do YouTube para ver seus uploads recentes.</p>
+                    </div>
+                ) : (
+                    <div className={viewMode === "grid"
+                        ? "grid grid-cols-1 sm:grid-cols-2 gap-3"
+                        : "space-y-2"
+                    }>
+                        {state.recentUploads.map((video, index) => (
+                            <div
+                                key={video.id}
+                                className={`group relative overflow-hidden transition-all duration-300 ${viewMode === "grid"
+                                        ? "glass-card rounded-xl p-0 flex flex-col"
+                                        : "glass-card rounded-lg p-2 flex items-center gap-3 hover:translate-x-1"
+                                    }`}
+                            >
+                                {/* Thumbnail */}
+                                <div className={`relative overflow-hidden bg-surface-900 ${viewMode === "grid" ? "w-full aspect-video rounded-t-xl" : "w-24 h-16 rounded-md flex-shrink-0"
+                                    }`}>
+                                    <img
+                                        src={video.thumbnail}
+                                        alt={video.title}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="90"%3E%3Crect fill="%231e293b" width="120" height="90"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
+                                        }}
+                                    />
+                                    {/* Overlay Gradient */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-surface-900/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                                    {/* Play Button Overlay */}
+                                    <a
+                                        href={video.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
+                                    >
+                                        <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 hover:bg-primary hover:border-primary hover:scale-110 transition-all">
+                                            <ExternalLink className="w-4 h-4 text-white" />
                                         </div>
-                                    ))}
+                                    </a>
+                                </div>
+
+                                {/* Content */}
+                                <div className={`flex-1 min-w-0 ${viewMode === "grid" ? "p-3" : ""}`}>
+                                    <h4 className={`font-medium text-slate-200 leading-tight line-clamp-2 group-hover:text-primary-light transition-colors ${viewMode === "grid" ? "text-sm mb-2" : "text-sm mb-1"
+                                        }`}>
+                                        {video.title}
+                                    </h4>
+
+                                    <div className="flex items-center justify-between text-xs text-slate-500">
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex items-center gap-1 bg-surface-900/50 px-1.5 py-0.5 rounded">
+                                                <Eye className="w-3 h-3 text-primary" />
+                                                {video.viewCount?.toLocaleString() || 0}
+                                            </span>
+                                            <span>
+                                                {(() => {
+                                                    const date = new Date(video.publishedAt);
+                                                    const localDate = new Date(date.getTime() - (4 * 60 * 60 * 1000));
+                                                    return localDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                                                })()}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        )}
-                    </Card>
-                ))}
+                        ))}
+                    </div>
+                )}
             </div>
-        </div>
+        </section>
     );
 }

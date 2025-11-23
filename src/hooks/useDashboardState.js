@@ -61,6 +61,13 @@ const defaultData = {
     },
     channelStats: null, // { title, thumbnails, statistics: { subscriberCount, viewCount } }
     history: {}, // Format: { "YYYY-MM-DD": { completedItems: [], uploads: 0 } }
+    cache: {
+        channelStats: { data: null, timestamp: null },
+        recentUploads: { data: null, timestamp: null },
+        suggestions: { data: null, timestamp: null },
+        analytics: { data: null, timestamp: null }
+    },
+    quotaExceeded: false
 };
 
 function loadState() {
@@ -73,7 +80,6 @@ function loadState() {
             ...defaultData,
             ...loaded,
             history: loaded.history || {},
-            channelStats: loaded.channelStats || null,
             channelStats: loaded.channelStats || null,
             settings: { ...defaultData.settings, ...(loaded.settings || {}) },
             pipeline: loaded.pipeline || { jobs: [] }
@@ -112,6 +118,49 @@ export function exportCSV(rows, filename = "viralcuts_export.csv") {
 export function useDashboardState() {
     const [state, setState] = useState(loadState);
 
+    // Helper function to sync YouTube videos to calendar history
+    const syncVideosToCalendar = (videos, currentHistory) => {
+        const newHistory = { ...currentHistory };
+
+        videos.forEach(video => {
+            // Convert UTC timestamp to local date (YYYY-MM-DD)
+            const publishDate = new Date(video.publishedAt);
+            const localDateStr = publishDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+
+            console.log(`[syncVideosToCalendar] Video: ${video.title}`);
+            console.log(`  - UTC: ${video.publishedAt}`);
+            console.log(`  - Local Date: ${localDateStr}`);
+            console.log(`  - Full Local: ${publishDate.toLocaleString('pt-BR')}`);
+
+            if (!newHistory[localDateStr]) {
+                newHistory[localDateStr] = { completedItems: [], uploads: 0 };
+            }
+
+            // Check if video already exists in this date
+            const exists = newHistory[localDateStr].completedItems?.some(
+                item => item.id === video.id && item.type === 'youtube_video'
+            );
+
+            if (!exists) {
+                const completedItems = newHistory[localDateStr].completedItems || [];
+                newHistory[localDateStr].completedItems = [
+                    ...completedItems,
+                    {
+                        id: video.id,
+                        title: video.title,
+                        type: 'youtube_video',
+                        url: video.url,
+                        thumbnail: video.thumbnail,
+                        views: video.viewCount || 0,
+                        publishedAt: video.publishedAt
+                    }
+                ];
+            }
+        });
+
+        return newHistory;
+    };
+
     useEffect(() => {
         saveState(state);
     }, [state]);
@@ -139,7 +188,15 @@ export function useDashboardState() {
                 .then(videos => {
                     console.log("[useDashboardState] Received videos:", videos?.length);
                     if (videos) {
-                        setState(prev => ({ ...prev, recentUploads: videos }));
+                        // Sync videos to calendar
+                        setState(prev => {
+                            const newHistory = syncVideosToCalendar(videos, prev.history);
+                            return {
+                                ...prev,
+                                recentUploads: videos,
+                                history: newHistory
+                            };
+                        });
                     }
                 })
                 .catch(err => {
@@ -205,10 +262,25 @@ export function useDashboardState() {
             const isNowDone = item.done;
 
             let newCompletedItems = currentHistory.completedItems || [];
+
             if (isNowDone) {
-                if (!newCompletedItems.includes(itemId)) newCompletedItems = [...newCompletedItems, itemId];
+                // Check if already exists (handle both string IDs and objects)
+                const exists = newCompletedItems.some(i => (typeof i === 'string' ? i === itemId : i.id === itemId));
+
+                if (!exists) {
+                    newCompletedItems = [
+                        ...newCompletedItems,
+                        {
+                            id: itemId,
+                            title: item.text,
+                            type: 'checklist_item',
+                            timestamp: Date.now()
+                        }
+                    ];
+                }
             } else {
-                newCompletedItems = newCompletedItems.filter(id => id !== itemId);
+                // Remove item (handle both string IDs and objects)
+                newCompletedItems = newCompletedItems.filter(i => (typeof i === 'string' ? i !== itemId : i.id !== itemId));
             }
 
             return {
@@ -301,19 +373,27 @@ export function useDashboardState() {
                     const currentHistory = safeHistory[today] || { completedItems: [], uploads: 0, uploadedVideos: [] };
 
                     let newUploadedVideos = currentHistory.uploadedVideos || [];
+                    let newCompletedItems = currentHistory.completedItems || [];
 
                     // Only add to history if success
                     if (result.status === "success") {
-                        newUploadedVideos = [
-                            ...newUploadedVideos,
-                            {
-                                id: item.id,
-                                title: item.title,
-                                platform: item.platform,
-                                url: result.url,
-                                timestamp: Date.now()
-                            }
-                        ];
+                        const videoEntry = {
+                            id: item.id,
+                            title: item.title,
+                            platform: item.platform,
+                            url: result.url,
+                            timestamp: Date.now(),
+                            type: 'youtube_video', // Critical for SidebarRight filter
+                            thumbnail: item.thumbnail || null, // Ensure thumbnail exists if possible
+                            views: 0
+                        };
+
+                        newUploadedVideos = [...newUploadedVideos, videoEntry];
+
+                        // Add to completedItems if not already there (avoid duplicates)
+                        if (!newCompletedItems.some(i => i.id === item.id)) {
+                            newCompletedItems = [...newCompletedItems, videoEntry];
+                        }
                     }
 
                     return {
@@ -333,6 +413,7 @@ export function useDashboardState() {
                             [today]: {
                                 ...currentHistory,
                                 uploadedVideos: newUploadedVideos,
+                                completedItems: newCompletedItems,
                                 uploads: newUploadedVideos.length // Update count
                             }
                         } : safeHistory
@@ -357,19 +438,26 @@ export function useDashboardState() {
                 const safeHistory = prev.history || {};
                 const currentHistory = safeHistory[today] || { completedItems: [], uploads: 0, uploadedVideos: [] };
                 let newUploadedVideos = currentHistory.uploadedVideos || [];
+                let newCompletedItems = currentHistory.completedItems || [];
+
+                const videoEntry = {
+                    id: item.id,
+                    title: item.title,
+                    platform: item.platform,
+                    url: item.url, // Might be undefined if manual
+                    timestamp: Date.now(),
+                    type: 'youtube_video',
+                    thumbnail: item.thumbnail || null,
+                    views: 0
+                };
 
                 // Avoid duplicates if already there
                 if (!newUploadedVideos.find(v => v.id === id)) {
-                    newUploadedVideos = [
-                        ...newUploadedVideos,
-                        {
-                            id: item.id,
-                            title: item.title,
-                            platform: item.platform,
-                            url: item.url, // Might be undefined if manual
-                            timestamp: Date.now()
-                        }
-                    ];
+                    newUploadedVideos = [...newUploadedVideos, videoEntry];
+                }
+
+                if (!newCompletedItems.some(i => i.id === item.id)) {
+                    newCompletedItems = [...newCompletedItems, videoEntry];
                 }
 
                 return {
@@ -379,6 +467,7 @@ export function useDashboardState() {
                         [today]: {
                             ...currentHistory,
                             uploadedVideos: newUploadedVideos,
+                            completedItems: newCompletedItems,
                             uploads: newUploadedVideos.length
                         }
                     }
@@ -521,39 +610,117 @@ export function useDashboardState() {
         }));
     }
 
-    async function refreshChannelStats() {
+    async function refreshChannelStats(forceRefresh = false) {
         if (!state.auth.youtubeToken) return;
 
+        const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+        const now = Date.now();
+
+        const shouldUseCache = !forceRefresh && state.cache?.channelStats?.timestamp &&
+            (now - state.cache.channelStats.timestamp) < CACHE_DURATION;
+
+        if (shouldUseCache) {
+            console.log("[refreshChannelStats] Using cached data");
+            return true;
+        }
+
         try {
+            console.log("[refreshChannelStats] Fetching fresh data");
+
             const stats = await fetchChannelDetails(state.auth.youtubeToken);
             if (stats) {
-                setState(prev => ({ ...prev, channelStats: stats }));
+                setState(prev => ({
+                    ...prev,
+                    channelStats: stats,
+                    cache: {
+                        ...prev.cache,
+                        channelStats: { data: stats, timestamp: now }
+                    },
+                    quotaExceeded: false
+                }));
             }
 
-            // Also refresh videos
             const videos = await fetchChannelVideos(state.auth.youtubeToken);
             if (videos) {
-                setState(prev => ({ ...prev, recentUploads: videos }));
+                const newHistory = syncVideosToCalendar(videos, state.history);
+                setState(prev => ({
+                    ...prev,
+                    recentUploads: videos,
+                    history: newHistory,
+                    cache: {
+                        ...prev.cache,
+                        recentUploads: { data: videos, timestamp: now }
+                    }
+                }));
             }
 
-            // Also refresh analytics
             const analytics = await fetchChannelAnalytics(state.auth.youtubeToken);
             if (analytics && analytics.length > 0) {
                 setState(prev => ({
                     ...prev,
-                    analytics: { ...prev.analytics, views24h: analytics }
+                    analytics: { ...prev.analytics, views24h: analytics },
+                    cache: {
+                        ...prev.cache,
+                        analytics: { data: analytics, timestamp: now }
+                    }
                 }));
             }
 
-            // Also refresh suggestions
             const suggestions = await searchVideos(state.auth.youtubeToken, "podcast ciência curiosidades");
             if (suggestions) {
-                setState(prev => ({ ...prev, suggestions: suggestions }));
+                setState(prev => ({
+                    ...prev,
+                    suggestions: suggestions,
+                    cache: {
+                        ...prev.cache,
+                        suggestions: { data: suggestions, timestamp: now }
+                    }
+                }));
             }
 
             return true;
         } catch (e) {
             console.error("Failed to refresh stats", e);
+
+            if (e.message && e.message.includes("quota")) {
+                setState(prev => ({ ...prev, quotaExceeded: true }));
+                console.warn("YouTube API quota exceeded.");
+
+                // 1. Try to use cached data
+                if (state.cache?.channelStats?.data) {
+                    console.log("Using cached data due to quota limit.");
+                    setState(prev => ({
+                        ...prev,
+                        channelStats: prev.cache.channelStats.data,
+                        recentUploads: prev.cache.recentUploads?.data || prev.recentUploads,
+                        suggestions: prev.cache.suggestions?.data || prev.suggestions,
+                        analytics: prev.cache.analytics?.data ?
+                            { ...prev.analytics, views24h: prev.cache.analytics.data } :
+                            prev.analytics
+                    }));
+                }
+                // 2. If no cache, use MOCK data so UI doesn't break
+                else {
+                    console.log("No cache available. Using MOCK data fallback.");
+                    try {
+                        const mockStats = await fetchChannelDetails("MOCK_TOKEN");
+                        const mockVideos = await fetchChannelVideos("MOCK_TOKEN");
+                        const mockAnalytics = await fetchChannelAnalytics("MOCK_TOKEN");
+
+                        if (mockStats) {
+                            setState(prev => ({
+                                ...prev,
+                                channelStats: mockStats,
+                                recentUploads: mockVideos || [],
+                                analytics: { ...prev.analytics, views24h: mockAnalytics || [] },
+                            }));
+                        }
+                    } catch (mockErr) {
+                        console.error("Failed to load mock fallback", mockErr);
+                    }
+                }
+            }
+
             return false;
         }
     }

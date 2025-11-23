@@ -5,26 +5,27 @@ export async function fetchChannelDetails(token) {
     if (!token || token === "MOCK_TOKEN") {
         console.log("[YouTube API] Using MOCK data");
         return {
-            title: "Canal de Teste (Mock)",
-            description: "Este é um canal simulado para fins de desenvolvimento. Aqui você veria a descrição real do seu canal do YouTube, com detalhes sobre seu conteúdo e programação.",
-            customUrl: "@teste_mock",
+            id: "UC_mock_channel_id",
+            title: "PetCutsBR (Mock)",
+            description: "Canal de cortes virais sobre pets e curiosidades animais. Videos novos todo dia!",
+            customUrl: "@petcutsbr_mock",
             publishedAt: "2023-01-15T10:00:00Z",
             thumbnails: {
-                default: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
-                medium: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
-                high: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
+                default: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
+                medium: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
+                high: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
+            },
+            statistics: {
+                viewCount: "154320",
+                subscriberCount: "1250",
+                hiddenSubscriberCount: false,
+                videoCount: "45",
             },
             brandingSettings: {
                 image: {
-                    bannerExternalUrl: "https://picsum.photos/seed/viralcuts/2560/1440"
+                    bannerExternalUrl: "https://picsum.photos/seed/banner/2560/1440"
                 }
-            },
-            statistics: {
-                viewCount: "15430",
-                subscriberCount: "1250",
-                hiddenSubscriberCount: false,
-                videoCount: "42",
-            },
+            }
         };
     }
 
@@ -146,15 +147,53 @@ export async function fetchChannelVideos(token, maxResults = 50) {
         const videosData = await videosResponse.json();
         console.log("[YouTube API] Videos fetched:", videosData.items?.length || 0);
 
-        // Mapear para formato simplificado
-        const videos = (videosData.items || []).map(item => ({
-            id: item.snippet.resourceId.videoId,
-            title: item.snippet.title,
-            publishedAt: item.snippet.publishedAt,
-            thumbnails: item.snippet.thumbnails,
-            url: `https://youtube.com/watch?v=${item.snippet.resourceId.videoId}`
-        }));
+        if (!videosData.items || videosData.items.length === 0) {
+            return [];
+        }
 
+        // Get video IDs to fetch statistics
+        const videoIds = videosData.items.map(item => item.snippet.resourceId.videoId).join(',');
+
+        // Fetch video statistics (views, likes, etc)
+        const statsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${videoIds}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/json",
+                },
+            }
+        );
+
+        const statsData = await statsResponse.json();
+        const statsMap = {};
+
+        if (statsData.items) {
+            statsData.items.forEach(item => {
+                statsMap[item.id] = {
+                    viewCount: parseInt(item.statistics.viewCount) || 0,
+                    thumbnails: item.snippet.thumbnails
+                };
+            });
+        }
+
+        // Mapear para formato simplificado com estatísticas
+        const videos = (videosData.items || []).map(item => {
+            const videoId = item.snippet.resourceId.videoId;
+            const stats = statsMap[videoId] || {};
+
+            return {
+                id: videoId,
+                title: item.snippet.title,
+                publishedAt: item.snippet.publishedAt,
+                thumbnail: stats.thumbnails?.medium?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
+                thumbnails: stats.thumbnails || item.snippet.thumbnails,
+                viewCount: stats.viewCount || 0,
+                url: `https://youtube.com/watch?v=${videoId}`
+            };
+        });
+
+        console.log("[YouTube API] Videos with stats:", videos);
         return videos;
     } catch (error) {
         console.error("[YouTube API] Failed to fetch videos:", error);
@@ -167,15 +206,18 @@ export async function fetchChannelAnalytics(token) {
 
     if (!token || token === "MOCK_TOKEN") {
         console.log("[YouTube API] Using MOCK analytics");
-        return [
-            { name: "Seg", views: 150 },
-            { name: "Ter", views: 300 },
-            { name: "Qua", views: 450 },
-            { name: "Qui", views: 600 },
-            { name: "Sex", views: 400 },
-            { name: "Sáb", views: 700 },
-            { name: "Dom", views: 850 },
-        ];
+        // Generate dynamic mock data for the last 7 days
+        const mockData = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            mockData.push({
+                name: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                views: Math.floor(Math.random() * 500) + 100 // Random views between 100 and 600
+            });
+        }
+        return mockData;
     }
 
     try {
