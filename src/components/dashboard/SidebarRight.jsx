@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
-import { UploadCloud, FileCheck, Trash2, Calendar as CalendarIcon, BarChart2, CheckCircle2, Sparkles, ExternalLink, RefreshCw, Eye, TrendingUp } from "lucide-react";
+import { UploadCloud, FileCheck, Trash2, Calendar as CalendarIcon, BarChart2, CheckCircle2, Sparkles, ExternalLink, RefreshCw, Eye, TrendingUp, Search } from "lucide-react";
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, AreaChart, Area, YAxis, CartesianGrid } from "recharts";
 
 export function SidebarRight({ state, actions }) {
     const { uploadQueue, analytics = {}, history = {} } = state;
     const { markQueueStatus, removeQueueItem } = actions;
     const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
+    const [showSearch, setShowSearch] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
     const isLoading = !state.channelStats; // Assume loading if no stats
 
     const getAnalyticsData = () => {
@@ -26,7 +28,10 @@ export function SidebarRight({ state, actions }) {
         for (let i = 6; i >= 0; i--) {
             const date = new Date(today);
             date.setDate(today.getDate() - i);
-            const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const dateStr = `${day}/${month}`;
 
             days.push({
                 name: dateStr,
@@ -121,16 +126,46 @@ export function SidebarRight({ state, actions }) {
                         <Sparkles className="w-4 h-4 text-purple-400" />
                         Sugestões Virais
                     </h3>
-                    <button
-                        onClick={() => actions.refreshChannelStats()}
-                        className="text-xs text-slate-500 hover:text-purple-400 transition-colors p-1 rounded hover:bg-surface-800"
-                        title="Atualizar sugestões"
-                    >
-                        <RefreshCw className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        {showSearch ? (
+                            <input
+                                autoFocus
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        actions.refreshChannelStats(true, searchTerm);
+                                        // Optional: keep search open or close it? Let's keep it open to show what was searched, or close it.
+                                        // Let's keep it open for now.
+                                    }
+                                }}
+                                onBlur={() => {
+                                    if (!searchTerm) setShowSearch(false);
+                                }}
+                                placeholder="Buscar..."
+                                className="bg-surface-800 text-xs text-slate-200 rounded px-2 py-1 border border-surface-700 focus:border-purple-500 outline-none w-24 transition-all focus:w-32"
+                            />
+                        ) : (
+                            <button
+                                onClick={() => setShowSearch(true)}
+                                className="text-xs text-slate-500 hover:text-purple-400 transition-colors p-1 rounded hover:bg-surface-800"
+                                title="Buscar tema"
+                            >
+                                <Search className="w-3 h-3" />
+                            </button>
+                        )}
+                        <button
+                            onClick={() => actions.refreshChannelStats(true)}
+                            className="text-xs text-slate-500 hover:text-purple-400 transition-colors p-1 rounded hover:bg-surface-800"
+                            title="Atualizar sugestões"
+                        >
+                            <RefreshCw className="w-3 h-3" />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
                     {isLoading ? (
                         <>
                             <Skeleton className="h-16 w-full rounded-lg" />
@@ -213,15 +248,21 @@ export function SidebarRight({ state, actions }) {
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const day = i + 1;
                             const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                            const dayData = history[dateStr];
                             const status = getDayStatus(day);
                             const isSelected = selectedDate === dateStr;
+                            const isToday = dateStr === new Date().toLocaleDateString('en-CA');
+                            const hasActivity = dayData && dayData.completedItems && dayData.completedItems.length > 0;
 
                             let bgClass = "bg-surface-800/50 text-slate-500 hover:bg-surface-700";
                             let borderClass = "border-transparent";
 
-                            if (status === "today") {
+                            if (isToday) {
                                 bgClass = "bg-primary text-white font-bold shadow-lg shadow-primary/30";
-                            } else if (status === "done") {
+                                if (hasActivity) {
+                                    borderClass = "border-2 border-green-400"; // Green border for activity
+                                }
+                            } else if (hasActivity) {
                                 bgClass = "bg-green-500/20 text-green-400 border border-green-500/30";
                             }
 

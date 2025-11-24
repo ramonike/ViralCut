@@ -34,9 +34,30 @@ export function SidebarLeft({ state, actions }) {
     const goal = settings.dailyGoal || 4;
     const progress = Math.min((dailyUploads / goal) * 100, 100);
 
-    const NavItem = ({ icon: Icon, label, active, onClick }) => (
+    const handleMenuClick = (label) => {
+        if (label === "Dashboard") {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (label === "Pipeline") {
+            document.getElementById('pipeline-section')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (label === "Checklists") {
+            document.getElementById('checklist-section')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (label === "Analytics") {
+            // Toast logic would go here, but for now we can use a simple alert or console log if toast isn't available in context
+            // Assuming actions.setMessage exists or we can pass it. 
+            // Since we don't have setMessage in actions, we'll use a temporary alert or just log.
+            // Wait, App.jsx has setMessage. We should probably pass it down.
+            // For now, let's just log.
+            console.log("Analytics clicked");
+            alert("Em breve: Analytics Avançado com gráficos detalhados!");
+        } else if (label === "Configurações") {
+            console.log("Settings clicked");
+            alert("Em breve: Gerencie sua conta e preferências!");
+        }
+    };
+
+    const NavItem = ({ icon: Icon, label, active }) => (
         <button
-            onClick={onClick}
+            onClick={() => handleMenuClick(label)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${active
                 ? "bg-primary/10 text-primary border border-primary/20"
                 : "text-slate-400 hover:bg-surface-800 hover:text-slate-200"

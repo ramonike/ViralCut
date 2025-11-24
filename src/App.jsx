@@ -49,11 +49,14 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+import LandingPage from "./LandingPage";
+
 export default function ViralCutsDashboard() {
   const { state, actions } = useDashboardState();
   const [shareLink, setShareLink] = useState("");
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard"); // 'dashboard' | 'profile'
+  const [showLanding, setShowLanding] = useState(true);
   const linkInputRef = useRef(null);
 
   useEffect(() => {
@@ -86,6 +89,10 @@ export default function ViralCutsDashboard() {
 
   function seedExample() {
     actions.addToUploadQueue({ title: "Cachorro salva dono em 10s — impossível não rir", source: "clipper", platform: "YouTube Shorts", scheduledAt: new Date().toISOString() });
+  }
+
+  if (showLanding) {
+    return <LandingPage onEnter={() => setShowLanding(false)} />;
   }
 
   return (

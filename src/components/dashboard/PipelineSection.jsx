@@ -9,7 +9,7 @@ export function PipelineSection({ state, actions }) {
     const [viewMode, setViewMode] = useState("list"); // 'list' | 'grid'
 
     return (
-        <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <section id="pipeline-section" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Link Drop Zone - Vizard.ai */}
             <div className="glass-panel rounded-2xl p-1">
                 <div className="bg-surface-900/50 rounded-xl p-6 border border-dashed border-surface-700/50 hover:border-primary/50 hover:bg-surface-800/50 transition-all duration-300 group cursor-pointer relative overflow-hidden"
@@ -80,16 +80,16 @@ export function PipelineSection({ state, actions }) {
                         <p className="text-xs text-slate-500">Conecte sua conta do YouTube para ver seus uploads recentes.</p>
                     </div>
                 ) : (
-                    <div className={viewMode === "grid"
+                    <div className={`${viewMode === "grid"
                         ? "grid grid-cols-1 sm:grid-cols-2 gap-3"
-                        : "space-y-2"
+                        : "space-y-2"} max-h-[600px] overflow-y-auto custom-scrollbar pr-2`
                     }>
                         {state.recentUploads.map((video, index) => (
                             <div
                                 key={video.id}
                                 className={`group relative overflow-hidden transition-all duration-300 ${viewMode === "grid"
-                                        ? "glass-card rounded-xl p-0 flex flex-col"
-                                        : "glass-card rounded-lg p-2 flex items-center gap-3 hover:translate-x-1"
+                                    ? "glass-card rounded-xl p-0 flex flex-col"
+                                    : "glass-card rounded-lg p-2 flex items-center gap-3 hover:translate-x-1"
                                     }`}
                             >
                                 {/* Thumbnail */}

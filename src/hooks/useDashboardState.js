@@ -121,41 +121,42 @@ export function useDashboardState() {
     // Helper function to sync YouTube videos to calendar history
     const syncVideosToCalendar = (videos, currentHistory) => {
         const newHistory = { ...currentHistory };
+        const videosByDate = {};
 
+        // Group fetched videos by date
         videos.forEach(video => {
-            // Convert UTC timestamp to local date (YYYY-MM-DD)
             const publishDate = new Date(video.publishedAt);
             const localDateStr = publishDate.toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
 
-            console.log(`[syncVideosToCalendar] Video: ${video.title}`);
-            console.log(`  - UTC: ${video.publishedAt}`);
-            console.log(`  - Local Date: ${localDateStr}`);
-            console.log(`  - Full Local: ${publishDate.toLocaleString('pt-BR')}`);
-
-            if (!newHistory[localDateStr]) {
-                newHistory[localDateStr] = { completedItems: [], uploads: 0 };
+            if (!videosByDate[localDateStr]) {
+                videosByDate[localDateStr] = [];
             }
+            videosByDate[localDateStr].push({
+                id: video.id,
+                title: video.title,
+                type: 'youtube_video',
+                url: video.url,
+                thumbnail: video.thumbnail,
+                views: video.viewCount || 0,
+                publishedAt: video.publishedAt
+            });
+        });
 
-            // Check if video already exists in this date
-            const exists = newHistory[localDateStr].completedItems?.some(
-                item => item.id === video.id && item.type === 'youtube_video'
-            );
+        // Update history for each date found
+        Object.keys(videosByDate).forEach(date => {
+            const existingDay = newHistory[date] || { completedItems: [], uploads: 0 };
 
-            if (!exists) {
-                const completedItems = newHistory[localDateStr].completedItems || [];
-                newHistory[localDateStr].completedItems = [
-                    ...completedItems,
-                    {
-                        id: video.id,
-                        title: video.title,
-                        type: 'youtube_video',
-                        url: video.url,
-                        thumbnail: video.thumbnail,
-                        views: video.viewCount || 0,
-                        publishedAt: video.publishedAt
-                    }
-                ];
-            }
+            // Keep only non-youtube items (checklist items) to avoid duplicates
+            const otherItems = (existingDay.completedItems || []).filter(item => item.type !== 'youtube_video');
+
+            // Combine
+            const newCompletedItems = [...otherItems, ...videosByDate[date]];
+
+            newHistory[date] = {
+                ...existingDay,
+                completedItems: newCompletedItems,
+                uploads: videosByDate[date].length
+            };
         });
 
         return newHistory;
@@ -610,13 +611,13 @@ export function useDashboardState() {
         }));
     }
 
-    async function refreshChannelStats(forceRefresh = false) {
+    async function refreshChannelStats(forceRefresh = false, customQuery = null) {
         if (!state.auth.youtubeToken) return;
 
         const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
         const now = Date.now();
 
-        const shouldUseCache = !forceRefresh && state.cache?.channelStats?.timestamp &&
+        const shouldUseCache = !forceRefresh && !customQuery && state.cache?.channelStats?.timestamp &&
             (now - state.cache.channelStats.timestamp) < CACHE_DURATION;
 
         if (shouldUseCache) {
@@ -627,56 +628,40 @@ export function useDashboardState() {
         try {
             console.log("[refreshChannelStats] Fetching fresh data");
 
+            // 1. Channel Details
             const stats = await fetchChannelDetails(state.auth.youtubeToken);
-            if (stats) {
-                setState(prev => ({
-                    ...prev,
-                    channelStats: stats,
-                    cache: {
-                        ...prev.cache,
-                        channelStats: { data: stats, timestamp: now }
-                    },
-                    quotaExceeded: false
-                }));
-            }
 
+            // 2. Recent Videos
             const videos = await fetchChannelVideos(state.auth.youtubeToken);
-            if (videos) {
-                const newHistory = syncVideosToCalendar(videos, state.history);
-                setState(prev => ({
+
+            // 3. Suggestions (Search)
+            let queryToUse = customQuery;
+            if (!queryToUse) {
+                const queries = ["curiosidades mundo", "ciência tecnologia", "fatos históricos", "animais incríveis", "mistérios universo", "dicas produtividade", "saúde bem estar"];
+                queryToUse = queries[Math.floor(Math.random() * queries.length)];
+            }
+            console.log(`[refreshChannelStats] Searching for: ${queryToUse}`);
+            const suggestions = await searchVideos(state.auth.youtubeToken, queryToUse);
+
+            // Update State
+            setState(prev => {
+                const newHistory = videos ? syncVideosToCalendar(videos, prev.history) : prev.history;
+
+                return {
                     ...prev,
-                    recentUploads: videos,
+                    channelStats: stats || prev.channelStats,
+                    recentUploads: videos || prev.recentUploads,
+                    suggestions: suggestions || prev.suggestions,
                     history: newHistory,
+                    quotaExceeded: false,
                     cache: {
                         ...prev.cache,
-                        recentUploads: { data: videos, timestamp: now }
+                        channelStats: stats ? { data: stats, timestamp: now } : prev.cache.channelStats,
+                        recentUploads: videos ? { data: videos, timestamp: now } : prev.cache.recentUploads,
+                        suggestions: suggestions ? { data: suggestions, timestamp: now } : prev.cache.suggestions
                     }
-                }));
-            }
-
-            const analytics = await fetchChannelAnalytics(state.auth.youtubeToken);
-            if (analytics && analytics.length > 0) {
-                setState(prev => ({
-                    ...prev,
-                    analytics: { ...prev.analytics, views24h: analytics },
-                    cache: {
-                        ...prev.cache,
-                        analytics: { data: analytics, timestamp: now }
-                    }
-                }));
-            }
-
-            const suggestions = await searchVideos(state.auth.youtubeToken, "podcast ciência curiosidades");
-            if (suggestions) {
-                setState(prev => ({
-                    ...prev,
-                    suggestions: suggestions,
-                    cache: {
-                        ...prev.cache,
-                        suggestions: { data: suggestions, timestamp: now }
-                    }
-                }));
-            }
+                };
+            });
 
             return true;
         } catch (e) {
@@ -706,12 +691,14 @@ export function useDashboardState() {
                         const mockStats = await fetchChannelDetails("MOCK_TOKEN");
                         const mockVideos = await fetchChannelVideos("MOCK_TOKEN");
                         const mockAnalytics = await fetchChannelAnalytics("MOCK_TOKEN");
+                        const mockSuggestions = await searchVideos("MOCK_TOKEN", "mock query");
 
                         if (mockStats) {
                             setState(prev => ({
                                 ...prev,
                                 channelStats: mockStats,
                                 recentUploads: mockVideos || [],
+                                suggestions: mockSuggestions || [],
                                 analytics: { ...prev.analytics, views24h: mockAnalytics || [] },
                             }));
                         }

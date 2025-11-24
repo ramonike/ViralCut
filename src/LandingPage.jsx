@@ -1,10 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import ViralCutsDashboard from "./App.jsx";
 
-export default function LandingPage() {
-  const [showDashboard, setShowDashboard] = useState(false);
-  if (showDashboard) return <ViralCutsDashboard />;
+export default function LandingPage({ onEnter }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-orange-100 font-sans text-slate-900">
       {/* Botão fixo para acessar dashboard */}
@@ -12,7 +9,7 @@ export default function LandingPage() {
         <motion.button
           whileHover={{ scale: 1.08, boxShadow: "0 4px 24px #facc15cc" }}
           whileTap={{ scale: 0.96 }}
-          onClick={() => setShowDashboard(true)}
+          onClick={onEnter}
           className="px-5 py-2 bg-slate-900 text-yellow-300 font-bold rounded-xl shadow-lg hover:bg-slate-800 transition text-base border-2 border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
         >
           Acessar Dashboard
