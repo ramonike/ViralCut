@@ -1,18 +1,20 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
-export default function LandingPage({ onEnter }) {
+export default function LandingPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-orange-100 font-sans text-slate-900">
-      {/* Botão fixo para acessar dashboard */}
       <div className="fixed top-4 right-4 z-50">
         <motion.button
           whileHover={{ scale: 1.08, boxShadow: "0 4px 24px #facc15cc" }}
           whileTap={{ scale: 0.96 }}
-          onClick={onEnter}
+          onClick={() => navigate('/login')}
           className="px-5 py-2 bg-slate-900 text-yellow-300 font-bold rounded-xl shadow-lg hover:bg-slate-800 transition text-base border-2 border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
         >
-          Acessar Dashboard
+          Entrar / Cadastrar
         </motion.button>
       </div>
       {/* SEO Meta */}
