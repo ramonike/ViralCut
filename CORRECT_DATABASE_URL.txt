@@ -1,0 +1,10 @@
+# INSTRUÇÕES: Atualize o arquivo .env na RAIZ do projeto com esta linha
+
+# Substitua a linha DATABASE_URL existente por esta:
+DATABASE_URL=postgresql://postgres.wpguzmkmxpwlliksyauv:Xe5gb2M6f0S6Wpgw@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+
+# IMPORTANTE:
+# - Esta é a connection string CORRETA do seu projeto Supabase
+# - Região: aws-1-us-east-2 (US East Ohio)
+# - Porta 6543: Transaction Pooler (ideal para serverless)
+# - Formato: postgres.PROJECT_ID (com ponto antes do ID)

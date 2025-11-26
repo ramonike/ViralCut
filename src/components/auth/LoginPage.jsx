@@ -16,13 +16,8 @@ export default function LoginPage() {
             return;
         }
 
-        if (password.length < 8) {
-            setError("A senha deve ter pelo menos 8 caracteres");
-            return;
-        }
-
         try {
-            const response = await fetch("http://localhost:3000/api/auth/sign-in/email", {
+            const response = await fetch("http://localhost:3000/api/auth/sign-in", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -37,7 +32,7 @@ export default function LoginPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.message || "Erro ao fazer login");
+                setError(data.error || "Erro ao fazer login");
             } else {
                 // Login successful, navigate to dashboard
                 navigate("/dashboard");
@@ -62,7 +57,7 @@ export default function LoginPage() {
                         <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-slate-900 border-slate-700" />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Senha (mínimo 8 caracteres)</label>
+                        <label className="text-sm font-medium">Senha</label>
                         <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-slate-900 border-slate-700" />
                     </div>
                 </CardContent>
