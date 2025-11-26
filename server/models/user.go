@@ -49,3 +49,13 @@ type SessionWithUser struct {
 	Session Session `json:"session"`
 	User    User    `json:"user"`
 }
+
+// Verification represents email/password verification tokens
+type Verification struct {
+	ID         string    `json:"id" db:"id"`
+	Identifier string    `json:"identifier" db:"identifier"` // email address
+	Value      string    `json:"value" db:"value"`           // token
+	ExpiresAt  time.Time `json:"expiresAt" db:"expires_at"`
+	CreatedAt  time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt  time.Time `json:"updatedAt" db:"updated_at"`
+}

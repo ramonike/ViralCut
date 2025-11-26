@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
 import { exportCSV } from "../../hooks/useDashboardState";
 import { Upload, Home, BarChart2, Settings, Layers, CheckSquare, Crown, Plus } from "lucide-react";
+import { LogoutButton } from "./LogoutButton";
 
 export function SidebarLeft({ state, actions }) {
     const { checklists, uploadQueue, settings, channelStats } = state;
@@ -120,6 +121,7 @@ export function SidebarLeft({ state, actions }) {
                 <NavItem icon={Layers} label="Pipeline" />
                 <NavItem icon={CheckSquare} label="Checklists" />
                 <NavItem icon={BarChart2} label="Analytics" />
+                <LogoutButton />
                 <NavItem icon={Settings} label="Configurações" />
             </nav>
 

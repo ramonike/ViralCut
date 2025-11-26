@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificação de Email - ViralCuts</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .content p {
+            color: #333;
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        .link-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-size: 12px;
+            color: #666;
+        }
+        .footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .warning {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 ViralCuts</h1>
+        </div>
+        <div class="content">
+            <h2 style="color: #333; margin-top: 0;">Bem-vindo ao ViralCuts!</h2>
+            <p>Obrigado por se registrar! Para começar a usar sua conta, precisamos verificar seu endereço de email.</p>
+            <p>Clique no botão abaixo para verificar seu email:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{VERIFICATION_LINK}}" class="button">Verificar Meu Email</a>
+            </div>
+            
+            <p>Ou copie e cole este link no seu navegador:</p>
+            <div class="link-box">{{VERIFICATION_LINK}}</div>
+            
+            <p class="warning">⚠️ Este link expira em 24 horas.</p>
+            
+            <p style="margin-top: 30px;">Se você não criou uma conta no ViralCuts, pode ignorar este email com segurança.</p>
+        </div>
+        <div class="footer">
+            <p>© 2025 ViralCuts. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

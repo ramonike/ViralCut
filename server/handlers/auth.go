@@ -98,6 +98,31 @@ func (h *AuthHandler) SignUp(c *gin.Context) {
 	// Set session cookie
 	h.setSessionCookie(c, session.Token)
 
+	// Generate and send verification email
+	verificationToken := utils.GenerateID()
+	verificationExpiresAt := now.Add(24 * time.Hour)
+
+	_, err = h.db.Exec(context.Background(),
+		`INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		utils.GenerateID(), req.Email, verificationToken, verificationExpiresAt, now, now,
+	)
+	if err != nil {
+		// Don't fail registration if verification email fails
+		// Just log the error
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create verification token"})
+		return
+	}
+
+	// Send verification email (async, don't block registration)
+	go func() {
+		err := utils.SendVerificationEmail(req.Email, verificationToken)
+		if err != nil {
+			// Log error but don't fail the request
+			println("Failed to send verification email:", err.Error())
+		}
+	}()
+
 	// Return user data
 	user := models.User{
 		ID:            userID,

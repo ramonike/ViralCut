@@ -9,16 +9,30 @@ import { SidebarRight } from "./dashboard/SidebarRight";
 import { ChecklistSection } from "./dashboard/ChecklistSection";
 import { PipelineSection } from "./dashboard/PipelineSection";
 import { ProfileSection } from "./dashboard/ProfileSection";
+import EmailVerificationBanner from "./EmailVerificationBanner";
 
 export default function Dashboard() {
     const { state, actions } = useDashboardState();
     const [shareLink, setShareLink] = useState("");
     const [message, setMessage] = useState("");
     const [activeTab, setActiveTab] = useState("dashboard");
+    const [user, setUser] = useState(null);
     const linkInputRef = useRef(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") setShareLink(window.location.href);
+
+        // Check session and get user data
+        fetch('http://localhost:3000/api/auth/session', {
+            credentials: 'include',
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.user) {
+                    setUser(data.user);
+                }
+            })
+            .catch((err) => console.error('Failed to get session:', err));
     }, []);
 
     async function copyLink() {
@@ -122,6 +136,11 @@ export default function Dashboard() {
 
             {/* Conteúdo principal */}
             <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+                {/* Email Verification Banner */}
+                {user && !user.emailVerified && (
+                    <EmailVerificationBanner userEmail={user.email} />
+                )}
+
                 {activeTab === "dashboard" ? (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Left Sidebar - Hidden on mobile, shown on desktop */}

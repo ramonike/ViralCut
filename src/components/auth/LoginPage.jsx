@@ -63,6 +63,9 @@ export default function LoginPage() {
                 </CardContent>
                 <CardFooter className="flex flex-col gap-2">
                     <Button className="w-full bg-blue-600 hover:bg-blue-500" onClick={handleLogin}>Entrar</Button>
+                    <Link to="/forgot-password" className="text-xs text-blue-400 hover:underline block text-right">
+                        Esqueceu sua senha?
+                    </Link>
                     <p className="text-xs text-slate-400 text-center">
                         Não tem conta? <Link to="/register" className="text-blue-400 hover:underline">Cadastre-se</Link>
                     </p>

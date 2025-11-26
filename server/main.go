@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 )
 
@@ -56,6 +58,13 @@ func main() {
 
 	fmt.Println("Connected to Supabase PostgreSQL successfully!")
 
+	// Create database/sql connection for email verification handler
+	dbSQL, err := sql.Open("pgx", dbUrl)
+	if err != nil {
+		log.Fatalf("Failed to create SQL connection: %v\n", err)
+	}
+	defer dbSQL.Close()
+
 	// Initialize Gin router
 	r := gin.Default()
 
@@ -74,17 +83,24 @@ func main() {
 		c.Next()
 	})
 
-	// Initialize auth handler
+	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
+	passwordResetHandler := handlers.NewPasswordResetHandler(db)
+	emailVerificationHandler := handlers.NewEmailVerificationHandler(dbSQL)
 
-	// Auth routes (Better Auth compatible)
-	auth := r.Group("/api/auth")
-	{
-		auth.POST("/sign-up", authHandler.SignUp)
-		auth.POST("/sign-in", authHandler.SignIn)
-		auth.POST("/sign-out", authHandler.SignOut)
-		auth.GET("/session", authHandler.GetSession)
-	}
+	// Auth routes
+	r.POST("/api/auth/sign-up", authHandler.SignUp)
+	r.POST("/api/auth/sign-in", authHandler.SignIn)
+	r.GET("/api/auth/session", authHandler.GetSession)
+	r.POST("/api/auth/sign-out", authHandler.SignOut)
+
+	// Password reset routes
+	r.POST("/api/auth/forgot-password", passwordResetHandler.ForgotPassword)
+	r.POST("/api/auth/reset-password", passwordResetHandler.ResetPassword)
+
+	// Email verification routes
+	r.GET("/api/auth/verify-email", emailVerificationHandler.VerifyEmail)
+	r.POST("/api/auth/resend-verification", emailVerificationHandler.ResendVerification)
 
 	// Ping endpoint (for health checks)
 	r.GET("/ping", func(c *gin.Context) {
