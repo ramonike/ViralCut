@@ -1,4 +1,5 @@
 import { LogOut } from "lucide-react";
+import { API_ENDPOINTS, API_URL } from '../config/api';
 import { useNavigate } from "react-router-dom";
 
 export function LogoutButton() {
@@ -6,7 +7,7 @@ export function LogoutButton() {
 
     const handleLogout = async () => {
         try {
-            const response = await fetch("http://localhost:3000/api/auth/sign-out", {
+            const response = await fetch(API_ENDPOINTS.AUTH.SIGN_OUT, {
                 method: "POST",
                 credentials: "include",
             });

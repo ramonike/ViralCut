@@ -76,7 +76,7 @@ func main() {
 		allowedOrigins := []string{
 			"http://localhost:5173",
 			"http://localhost:3000",
-			"https://viral-cuts-dashboard.vercel.app", // Atualize com sua URL da Vercel
+			"https://viral-cut-kappa.vercel.app/", // Atualize com sua URL da Vercel
 		}
 
 		// Check if origin is allowed

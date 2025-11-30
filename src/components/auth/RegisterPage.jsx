@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_ENDPOINTS, API_URL } from '../config/api';
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -23,7 +24,7 @@ export default function RegisterPage() {
         }
 
         try {
-            const response = await fetch("http://localhost:3000/api/auth/sign-up", {
+            const response = await fetch(API_ENDPOINTS.AUTH.SIGN_UP, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

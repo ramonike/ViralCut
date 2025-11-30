@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { API_ENDPOINTS, API_URL } from '../config/api';
 import { PlusCircle, LayoutDashboard, UserCircle, Lock } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -23,7 +24,7 @@ export default function Dashboard() {
         if (typeof window !== "undefined") setShareLink(window.location.href);
 
         // Check session and get user data
-        fetch('http://localhost:3000/api/auth/session', {
+        fetch(API_ENDPOINTS.AUTH.SESSION, {
             credentials: 'include',
         })
             .then((res) => res.json())

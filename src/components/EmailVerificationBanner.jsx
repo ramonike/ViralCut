@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_ENDPOINTS, API_URL } from '../config/api';
 
 const EmailVerificationBanner = ({ userEmail }) => {
     const [isResending, setIsResending] = useState(false);
@@ -12,7 +13,7 @@ const EmailVerificationBanner = ({ userEmail }) => {
         setMessage('');
 
         try {
-            const response = await fetch('http://localhost:3000/api/auth/resend-verification', {
+            const response = await fetch(API_ENDPOINTS.AUTH.RESEND_VERIFICATION, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

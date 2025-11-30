@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_ENDPOINTS, API_URL } from '../../config/api';
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -40,7 +41,7 @@ export default function ResetPasswordPage() {
         setError("");
 
         try {
-            const response = await fetch("http://localhost:3000/api/auth/reset-password", {
+            const response = await fetch(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

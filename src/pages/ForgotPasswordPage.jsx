@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_ENDPOINTS, API_URL } from '../../config/api';
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -20,7 +21,7 @@ export default function ForgotPasswordPage() {
         setError("");
 
         try {
-            const response = await fetch("http://localhost:3000/api/auth/forgot-password", {
+            const response = await fetch(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
