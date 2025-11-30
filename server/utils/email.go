@@ -76,7 +76,7 @@ func sendEmail(to, subject, htmlContent string) error {
 		fmt.Println("=== EMAIL SENT (DEV MODE) ===")
 		fmt.Printf("To: %s\n", to)
 		fmt.Printf("Subject: %s\n", subject)
-		fmt.Println("Content: [HTML Email]")
+		fmt.Printf("Content: %s\n", htmlContent)
 		fmt.Println("=============================")
 		return nil
 	}

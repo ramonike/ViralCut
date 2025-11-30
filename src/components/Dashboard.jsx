@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { PlusCircle, LayoutDashboard, UserCircle } from "lucide-react";
+import { PlusCircle, LayoutDashboard, UserCircle, Lock } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { FloatingCTA } from "./ui/FloatingCTA";
@@ -63,6 +63,11 @@ export default function Dashboard() {
         actions.addToUploadQueue({ title: "Cachorro salva dono em 10s — impossível não rir", source: "clipper", platform: "YouTube Shorts", scheduledAt: new Date().toISOString() });
     }
 
+    // Check if "Create Google Account" checklist item is done
+    const setupChecklist = state.checklists.find(c => c.id === "setup");
+    const googleAccountItem = setupChecklist?.items.find(i => i.id === "g_account");
+    const isProfileUnlocked = googleAccountItem?.done;
+
     return (
         <div className="min-h-screen w-full bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
             {/* Header fixo */}
@@ -90,14 +95,28 @@ export default function Dashboard() {
                             >
                                 <LayoutDashboard className="w-4 h-4 mr-2" /> Dashboard
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setActiveTab("profile")}
-                                className={`transition-all ${activeTab === "profile" ? "bg-slate-700 text-white shadow-md shadow-blue-500/10" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
-                            >
-                                <UserCircle className="w-4 h-4 mr-2" /> Perfil & Conexões
-                            </Button>
+                            <div className="relative group/profile">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={!isProfileUnlocked}
+                                    onClick={() => isProfileUnlocked && setActiveTab("profile")}
+                                    className={`transition-all ${activeTab === "profile"
+                                        ? "bg-slate-700 text-white shadow-md shadow-blue-500/10"
+                                        : isProfileUnlocked
+                                            ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                                            : "text-slate-600 cursor-not-allowed opacity-50"
+                                        }`}
+                                >
+                                    {isProfileUnlocked ? <UserCircle className="w-4 h-4 mr-2" /> : <Lock className="w-3 h-3 mr-2" />}
+                                    Perfil & Conexões
+                                </Button>
+                                {!isProfileUnlocked && (
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-slate-800 text-xs text-slate-300 rounded shadow-xl border border-slate-700 opacity-0 group-hover/profile:opacity-100 transition-opacity pointer-events-none z-50 text-center">
+                                        Conclua a criação da conta Google para liberar.
+                                    </div>
+                                )}
+                            </div>
                         </nav>
 
                         {/* Actions */}
@@ -125,10 +144,17 @@ export default function Dashboard() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setActiveTab("profile")}
-                            className={`flex-1 transition-all ${activeTab === "profile" ? "bg-slate-700 text-white shadow-md" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+                            disabled={!isProfileUnlocked}
+                            onClick={() => isProfileUnlocked && setActiveTab("profile")}
+                            className={`flex-1 transition-all ${activeTab === "profile"
+                                ? "bg-slate-700 text-white shadow-md"
+                                : isProfileUnlocked
+                                    ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                                    : "text-slate-600 cursor-not-allowed opacity-50"
+                                }`}
                         >
-                            <UserCircle className="w-4 h-4 mr-2" /> Perfil
+                            {isProfileUnlocked ? <UserCircle className="w-4 h-4 mr-2" /> : <Lock className="w-3 h-3 mr-2" />}
+                            Perfil
                         </Button>
                     </div>
                 </div>

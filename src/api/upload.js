@@ -15,7 +15,8 @@ export async function uploadVideo(item, token, file) {
       file: file,
       title: item.title,
       description: item.description,
-      token: token
+      token: token,
+      publishAt: item.scheduledAt
     });
   }
 

@@ -70,7 +70,28 @@ func main() {
 
 	// CORS Middleware
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		origin := c.Request.Header.Get("Origin")
+
+		// Allow localhost for development and Vercel for production
+		allowedOrigins := []string{
+			"http://localhost:5173",
+			"http://localhost:3000",
+			"https://viral-cuts-dashboard.vercel.app", // Atualize com sua URL da Vercel
+		}
+
+		// Check if origin is allowed
+		isAllowed := false
+		for _, allowed := range allowedOrigins {
+			if origin == allowed {
+				isAllowed = true
+				break
+			}
+		}
+
+		if isAllowed {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")

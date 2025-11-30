@@ -2,7 +2,89 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { CheckSquare, Plus, RefreshCw } from "lucide-react";
+import { CheckSquare, Plus, RefreshCw, ExternalLink, Youtube, Video, Image, MessageSquare, Zap, DollarSign, ShoppingBag } from "lucide-react";
+
+// Brand Button Component
+const BrandButton = ({ type, url }) => {
+    const brands = {
+        google: {
+            label: "Google",
+            icon: <span className="font-bold text-lg">G</span>,
+            className: "bg-white text-slate-900 hover:bg-slate-200"
+        },
+        youtube: {
+            label: "YouTube",
+            icon: <Youtube className="w-4 h-4" />,
+            className: "bg-[#FF0000] text-white hover:bg-[#CC0000]"
+        },
+        youtube_studio: {
+            label: "Studio",
+            icon: <Video className="w-4 h-4" />,
+            className: "bg-[#FF0000] text-white hover:bg-[#CC0000]"
+        },
+        youtube_monetization: {
+            label: "Monetização",
+            icon: <DollarSign className="w-4 h-4" />,
+            className: "bg-[#2bb24c] text-white hover:bg-[#23963f]"
+        },
+        tiktok: {
+            label: "TikTok",
+            icon: <span className="font-bold">♪</span>,
+            className: "bg-black text-white border border-slate-700 hover:bg-slate-900"
+        },
+        tiktok_marketplace: {
+            label: "Marketplace",
+            icon: <ShoppingBag className="w-4 h-4" />,
+            className: "bg-black text-white border border-slate-700 hover:bg-slate-900"
+        },
+        canva: {
+            label: "Canva",
+            icon: <Image className="w-4 h-4" />,
+            className: "bg-[#00C4CC] text-white hover:bg-[#009FA6]"
+        },
+        chatgpt: {
+            label: "ChatGPT",
+            icon: <MessageSquare className="w-4 h-4" />,
+            className: "bg-[#74AA9C] text-white hover:bg-[#5E8A7E]"
+        },
+        opus: {
+            label: "OpusClip",
+            icon: <Video className="w-4 h-4" />,
+            className: "bg-[#5D3FD3] text-white hover:bg-[#4B32AA]"
+        },
+        zapier: {
+            label: "Zapier",
+            icon: <Zap className="w-4 h-4" />,
+            className: "bg-[#FF4F00] text-white hover:bg-[#CC3F00]"
+        },
+        make: {
+            label: "Make",
+            icon: <Zap className="w-4 h-4" />,
+            className: "bg-[#6D28D9] text-white hover:bg-[#5B21B6]"
+        },
+        default: {
+            label: "Link",
+            icon: <ExternalLink className="w-4 h-4" />,
+            className: "bg-slate-700 text-white hover:bg-slate-600"
+        }
+    };
+
+    const style = brands[type] || brands.default;
+
+    return (
+        <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all shadow-sm ${style.className}`}
+            onClick={(e) => e.stopPropagation()}
+            title={`Abrir ${style.label}`}
+        >
+            {style.icon}
+            <span className="hidden sm:inline">{style.label}</span>
+        </a>
+    );
+};
 
 export function ChecklistSection({ state, actions }) {
     const { checklists } = state;
@@ -61,26 +143,45 @@ export function ChecklistSection({ state, actions }) {
                             {activeList.items.map((item) => (
                                 <div
                                     key={item.id}
-                                    onClick={() => toggleItem(activeList.id, item.id)}
-                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group ${item.done
+                                    className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border transition-all group ${item.done
                                         ? "bg-viral-900/30 border-viral-700 opacity-60"
                                         : "bg-viral-900 border-viral-600 hover:border-viral-500 hover:shadow-md hover:shadow-viral-500/10"
                                         }`}
                                 >
-                                    <div
-                                        className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${item.done
-                                            ? "bg-viral-neon border-viral-neon"
-                                            : "border-slate-500 group-hover:border-viral-400"
-                                            }`}
-                                    >
-                                        {item.done && <span className="text-viral-900 text-xs font-bold">✓</span>}
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div
+                                            onClick={() => toggleItem(activeList.id, item.id)}
+                                            className={`w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer flex-shrink-0 ${item.done
+                                                ? "bg-viral-neon border-viral-neon"
+                                                : "border-slate-500 group-hover:border-viral-400"
+                                                }`}
+                                        >
+                                            {item.done && <span className="text-viral-900 text-xs font-bold">✓</span>}
+                                        </div>
+                                        <span
+                                            onClick={() => toggleItem(activeList.id, item.id)}
+                                            className={`text-sm flex-1 cursor-pointer ${item.done ? "text-slate-500 line-through" : "text-slate-200"
+                                                }`}
+                                        >
+                                            {item.text}
+                                        </span>
                                     </div>
-                                    <span
-                                        className={`text-sm ${item.done ? "text-slate-500 line-through" : "text-slate-200"
-                                            }`}
-                                    >
-                                        {item.text}
-                                    </span>
+
+                                    {/* Action Buttons */}
+                                    {item.actions && item.actions.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 pl-8 sm:pl-0">
+                                            {item.actions.map((action, idx) => (
+                                                <BrandButton key={idx} type={action.type} url={action.url} />
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Legacy Link Fallback */}
+                                    {item.link && !item.actions && (
+                                        <div className="pl-8 sm:pl-0">
+                                            <BrandButton type="default" url={item.link} />
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

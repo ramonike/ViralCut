@@ -23,29 +23,109 @@ const defaultData = {
             id: "setup",
             title: "Configuração de Contas",
             items: [
-                { id: "g_account", text: "Criar conta Google & canal YouTube", done: false },
-                { id: "tiktok_acc", text: "Criar conta TikTok com mesmo nome", done: false },
-                { id: "profile_img", text: "Imagem de perfil 800x800 exportada", done: false },
-                { id: "banner", text: "Banner YouTube (2560x1440) com safe area", done: false },
-                { id: "bio", text: "Bios escritas com CTA e links", done: false },
+                {
+                    id: "g_account",
+                    text: "Criar conta Google & canal YouTube",
+                    done: false,
+                    actions: [
+                        { type: "google", url: "https://accounts.google.com/signup" },
+                        { type: "youtube", url: "https://www.youtube.com/create_channel" }
+                    ]
+                },
+                {
+                    id: "tiktok_acc",
+                    text: "Criar conta TikTok com mesmo nome",
+                    done: false,
+                    actions: [
+                        { type: "tiktok", url: "https://www.tiktok.com/signup" }
+                    ]
+                },
+                {
+                    id: "profile_img",
+                    text: "Imagem de perfil 800x800 exportada",
+                    done: false,
+                    actions: [
+                        { type: "canva", url: "https://www.canva.com/create/profile-pictures/" }
+                    ]
+                },
+                {
+                    id: "banner",
+                    text: "Banner YouTube (2560x1440) com safe area",
+                    done: false,
+                    actions: [
+                        { type: "canva", url: "https://www.canva.com/create/youtube-banners/" }
+                    ]
+                },
+                {
+                    id: "bio",
+                    text: "Bios escritas com CTA e links",
+                    done: false,
+                    actions: [
+                        { type: "chatgpt", url: "https://chat.openai.com" }
+                    ]
+                },
             ],
         },
         {
             id: "production",
             title: "Pipeline de Produção",
             items: [
-                { id: "clips_ready", text: "10 cortes prontos (edição + legendas)", done: false },
-                { id: "thumbs", text: "Templates de thumbnail prontos (Canva)", done: false },
-                { id: "uploads_sched", text: "Uploads agendados (YouTube + TikTok)", done: false },
-                { id: "zapier", text: "Zapier/Make > Airtable > upload flow configurado", done: false },
+                {
+                    id: "clips_ready",
+                    text: "10 cortes prontos (edição + legendas)",
+                    done: false,
+                    actions: [
+                        { type: "opus", url: "https://www.opus.pro/" }
+                    ]
+                },
+                {
+                    id: "thumbs",
+                    text: "Templates de thumbnail prontos (Canva)",
+                    done: false,
+                    actions: [
+                        { type: "canva", url: "https://www.canva.com/youtube-thumbnails/templates/" }
+                    ]
+                },
+                {
+                    id: "uploads_sched",
+                    text: "Uploads agendados (YouTube + TikTok)",
+                    done: false,
+                    actions: [
+                        { type: "youtube_studio", url: "https://studio.youtube.com" },
+                        { type: "tiktok", url: "https://www.tiktok.com/upload" }
+                    ]
+                },
+                {
+                    id: "zapier",
+                    text: "Zapier/Make > Airtable > upload flow configurado",
+                    done: false,
+                    actions: [
+                        { type: "zapier", url: "https://zapier.com" },
+                        { type: "make", url: "https://www.make.com" }
+                    ]
+                },
             ],
         },
         {
             id: "monetize",
             title: "Monetização & Crescimento",
             items: [
-                { id: "ypp_check", text: "Monitorar requisitos YPP (inscritos + horas/shorts views)", done: false },
-                { id: "partner", text: "Criar outreach para parcerias/TikTok Marketplace", done: false },
+                {
+                    id: "ypp_check",
+                    text: "Monitorar requisitos YPP (inscritos + horas/shorts views)",
+                    done: false,
+                    actions: [
+                        { type: "youtube_monetization", url: "https://studio.youtube.com/channel/monetization" }
+                    ]
+                },
+                {
+                    id: "partner",
+                    text: "Criar outreach para parcerias/TikTok Marketplace",
+                    done: false,
+                    actions: [
+                        { type: "tiktok_marketplace", url: "https://creator.tiktok.com/creator-marketplace" }
+                    ]
+                },
             ],
         },
     ],
@@ -235,6 +315,24 @@ export function useDashboardState() {
             setState(prev => ({ ...prev, channelStats: null }));
         }
     }, [state.auth.youtubeToken]);
+
+    // Polling for scheduled uploads
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            state.uploadQueue.forEach(item => {
+                if (item.status === "ready" && item.scheduledAt) {
+                    const scheduledTime = new Date(item.scheduledAt);
+                    if (scheduledTime <= now) {
+                        console.log(`[AutoUpload] Triggering upload for ${item.title} (Scheduled: ${item.scheduledAt})`);
+                        markQueueStatus(item.id, "uploading");
+                    }
+                }
+            });
+        }, 30000); // Check every 30 seconds
+
+        return () => clearInterval(interval);
+    }, [state.uploadQueue]);
 
     function toggleItem(checklistId, itemId) {
         const today = new Date().toLocaleDateString('en-CA');
@@ -500,11 +598,18 @@ export function useDashboardState() {
     }
 
     function resetChecklist(checklistId) {
+        const defaultList = defaultData.checklists.find(c => c.id === checklistId);
+
         setState((prev) => ({
             ...prev,
             checklists: prev.checklists.map((cl) =>
                 cl.id === checklistId
-                    ? { ...cl, items: cl.items.map((item) => ({ ...item, done: false })) }
+                    ? {
+                        ...cl,
+                        items: defaultList
+                            ? defaultList.items.map(item => ({ ...item, done: false }))
+                            : cl.items.map(item => ({ ...item, done: false }))
+                    }
                     : cl
             ),
         }));

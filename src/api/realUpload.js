@@ -49,7 +49,7 @@
  *    Headers: Authorization: Bearer <token>
  * 4. Trate a resposta e retorne a URL do vídeo.
  */
-export async function uploadToYouTube({ file, title, description, token }) {
+export async function uploadToYouTube({ file, title, description, token, publishAt }) {
   if (!token) {
     return { status: "error", error: "Token de acesso não fornecido. Conecte sua conta nas configurações." };
   }
@@ -64,6 +64,7 @@ export async function uploadToYouTube({ file, title, description, token }) {
       },
       status: {
         privacyStatus: "private", // Default to private for safety
+        publishAt: token.publishAt || undefined, // Add scheduling if provided
         selfDeclaredMadeForKids: false,
       },
     };
