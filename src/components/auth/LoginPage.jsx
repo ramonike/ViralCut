@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { API_ENDPOINTS, API_URL } from '../config/api';
+import { API_ENDPOINTS, API_URL } from '../../config/api';
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";

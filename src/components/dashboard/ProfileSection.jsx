@@ -3,17 +3,108 @@ import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { GoogleAuthButton } from "./GoogleAuthButton";
-import { User, Youtube, BarChart, Settings, LogOut, RefreshCw, CreditCard, Shield, Zap } from "lucide-react";
+import { User, Youtube, BarChart, Settings, LogOut, RefreshCw, CreditCard, Shield, Zap, Plus, Users, Check, ChevronDown } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 export function ProfileSection({ state, actions }) {
     const { settings, auth, channelStats } = state;
-    const { updateSettings, setYouTubeToken } = actions;
+    const { updateSettings, setYouTubeToken, switchAccount, disconnectAccount } = actions;
 
     const isConnected = auth?.youtubeToken && auth?.youtubeTokenExpiresAt > Date.now();
+    const connectedAccounts = auth?.connectedAccounts || [];
 
     return (
         <div className="max-w-5xl mx-auto mt-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
-            {/* Header do Perfil */}
+            {/* Account Switcher & Header */}
+            <div className="relative z-10 flex justify-between items-center bg-surface-800/50 p-4 rounded-xl border border-surface-700/50 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                        <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-bold text-white">Gerenciar Canais</h2>
+                        <p className="text-xs text-slate-400">{connectedAccounts.length} canais conectados</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {connectedAccounts.length > 0 && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="border-surface-600 bg-surface-800 text-slate-200 hover:bg-surface-700 hover:text-white min-w-[200px] justify-between">
+                                    <span className="flex items-center gap-2 truncate">
+                                        {channelStats?.thumbnails?.default?.url ? (
+                                            <img src={channelStats.thumbnails.default.url} className="w-5 h-5 rounded-full" />
+                                        ) : (
+                                            <User className="w-4 h-4" />
+                                        )}
+                                        <span className="truncate max-w-[120px]">{channelStats?.title || "Selecione um canal"}</span>
+                                    </span>
+                                    <ChevronDown className="w-4 h-4 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-[240px] bg-surface-800 border-surface-700 text-slate-200">
+                                <DropdownMenuLabel>Meus Canais</DropdownMenuLabel>
+                                <DropdownMenuSeparator className="bg-surface-700" />
+                                {connectedAccounts.map(account => (
+                                    <DropdownMenuItem
+                                        key={account.id}
+                                        onClick={() => switchAccount(account.id)}
+                                        className="flex items-center justify-between cursor-pointer hover:bg-surface-700 focus:bg-surface-700"
+                                    >
+                                        <div className="flex items-center gap-2 truncate">
+                                            {account.avatar ? (
+                                                <img src={account.avatar} className="w-6 h-6 rounded-full" />
+                                            ) : (
+                                                <User className="w-6 h-6 p-1 bg-surface-600 rounded-full" />
+                                            )}
+                                            <span className={`truncate ${auth.activeAccountId === account.id ? "font-bold text-white" : ""}`}>
+                                                {account.name}
+                                            </span>
+                                        </div>
+                                        {auth.activeAccountId === account.id && <Check className="w-4 h-4 text-primary" />}
+                                    </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator className="bg-surface-700" />
+                                <div className="p-2">
+                                    <GoogleAuthButton
+                                        onLoginSuccess={setYouTubeToken}
+                                        onLoginError={(err) => alert("Erro: " + JSON.stringify(err))}
+                                        text="Adicionar Novo Canal"
+                                        className="w-full justify-start h-8 text-xs"
+                                    />
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+
+                    {!isConnected && connectedAccounts.length === 0 && (
+                        <div className="flex gap-2">
+                            <GoogleAuthButton
+                                onLoginSuccess={setYouTubeToken}
+                                onLoginError={(err) => alert("Falha no login: " + JSON.stringify(err))}
+                            />
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-primary hover:text-white"
+                                onClick={() => setYouTubeToken({ access_token: "MOCK_TOKEN_" + Date.now(), expires_in: 3600 })}
+                            >
+                                Simular (Dev)
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Header do Perfil Ativo */}
             <div className="relative glass-panel rounded-2xl overflow-hidden group">
                 {/* Banner Background */}
                 <div className="absolute inset-0 h-48 bg-surface-900">
@@ -67,14 +158,14 @@ export function ProfileSection({ state, actions }) {
 
                     {/* Actions */}
                     <div className="mb-2 flex flex-col gap-2 items-end">
-                        {isConnected ? (
+                        {isConnected && (
                             <>
                                 <Button
                                     variant="destructive"
-                                    onClick={() => setYouTubeToken({ access_token: null, expires_in: 0 })}
+                                    onClick={() => disconnectAccount(auth.activeAccountId)}
                                     className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 backdrop-blur-sm transition-all"
                                 >
-                                    <LogOut className="w-4 h-4 mr-2" /> Desconectar
+                                    <LogOut className="w-4 h-4 mr-2" /> Desconectar Canal
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -85,21 +176,6 @@ export function ProfileSection({ state, actions }) {
                                     <RefreshCw className="w-3 h-3 mr-1" /> Atualizar Dados
                                 </Button>
                             </>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                <GoogleAuthButton
-                                    onLoginSuccess={setYouTubeToken}
-                                    onLoginError={(err) => alert("Falha no login: " + JSON.stringify(err))}
-                                />
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-xs text-primary hover:text-white"
-                                    onClick={() => setYouTubeToken({ access_token: "MOCK_TOKEN", expires_in: 3600 })}
-                                >
-                                    Simular (Dev Mode)
-                                </Button>
-                            </div>
                         )}
                     </div>
                 </div>

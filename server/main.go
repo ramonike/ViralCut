@@ -75,8 +75,9 @@ func main() {
 		// Allow localhost for development and Vercel for production
 		allowedOrigins := []string{
 			"http://localhost:5173",
+			"http://localhost:5174", // Vite alternate port
 			"http://localhost:3000",
-			"https://viral-cut-kappa.vercel.app/", // Atualize com sua URL da Vercel
+			"https://viral-cut-kappa.vercel.app", // Atualize com sua URL da Vercel
 		}
 
 		// Check if origin is allowed

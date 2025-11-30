@@ -8,7 +8,7 @@ import { LogoutButton } from "./LogoutButton";
 export function SidebarLeft({ state, actions }) {
     const { checklists, uploadQueue, settings, channelStats } = state;
     const { addToUploadQueue, resetState } = actions;
-    const fileInputRef = useRef(null);
+    // const fileInputRef = useRef(null); // Moved to PipelineSection
 
     const totalDone = checklists.reduce((acc, cl) => acc + cl.items.filter((i) => i.done).length, 0);
     const totalItems = checklists.reduce((acc, cl) => acc + cl.items.length, 0);
@@ -125,8 +125,8 @@ export function SidebarLeft({ state, actions }) {
                 <NavItem icon={Settings} label="Configurações" />
             </nav>
 
-            {/* Quick Actions */}
-            <div className="space-y-3 mt-auto">
+            {/* Quick Actions - REMOVED (Moved to PipelineSection) */}
+            {/* <div className="space-y-3 mt-auto">
                 <p className="px-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Ações Rápidas</p>
 
                 <input
@@ -146,7 +146,7 @@ export function SidebarLeft({ state, actions }) {
                         <span>Upload Vídeo</span>
                     </div>
                 </button>
-            </div>
+            </div> */}
 
             {/* Stats Summary */}
             <div className="glass-panel rounded-xl p-4 mt-4">

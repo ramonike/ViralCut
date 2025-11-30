@@ -138,6 +138,8 @@ const defaultData = {
     auth: {
         youtubeToken: null,
         youtubeTokenExpiresAt: null,
+        connectedAccounts: [], // Array of { id, name, avatar, token, expiresAt, stats }
+        activeAccountId: null,
     },
     channelStats: null, // { title, thumbnails, statistics: { subscriberCount, viewCount } }
     history: {}, // Format: { "YYYY-MM-DD": { completedItems: [], uploads: 0 } }
@@ -162,7 +164,13 @@ function loadState() {
             history: loaded.history || {},
             channelStats: loaded.channelStats || null,
             settings: { ...defaultData.settings, ...(loaded.settings || {}) },
-            pipeline: loaded.pipeline || { jobs: [] }
+            pipeline: loaded.pipeline || { jobs: [] },
+            auth: {
+                ...defaultData.auth,
+                ...(loaded.auth || {}),
+                connectedAccounts: loaded.auth?.connectedAccounts || [],
+                activeAccountId: loaded.auth?.activeAccountId || null
+            }
         };
     } catch (e) {
         console.error("Failed to load state", e);
@@ -629,26 +637,126 @@ export function useDashboardState() {
 
     async function setYouTubeToken(tokenResponse) {
         const expiresAt = Date.now() + (tokenResponse.expires_in * 1000);
+        const token = tokenResponse.access_token;
 
-        // Fetch details immediately if token is valid
-        let stats = null;
-        if (tokenResponse.access_token) {
-            try {
-                stats = await fetchChannelDetails(tokenResponse.access_token);
-            } catch (e) {
-                console.error("Failed to fetch initial stats", e);
-            }
+        if (!token) {
+            // Handle full logout if passed null
+            setState(prev => ({
+                ...prev,
+                auth: {
+                    ...prev.auth,
+                    youtubeToken: null,
+                    youtubeTokenExpiresAt: null,
+                    activeAccountId: null
+                },
+                channelStats: null
+            }));
+            return;
         }
 
-        setState(prev => ({
-            ...prev,
-            auth: {
-                ...prev.auth,
-                youtubeToken: tokenResponse.access_token,
-                youtubeTokenExpiresAt: expiresAt,
-            },
-            channelStats: stats || prev.channelStats
-        }));
+        // Fetch details immediately to create account profile
+        let stats = null;
+        try {
+            stats = await fetchChannelDetails(token);
+        } catch (e) {
+            console.error("Failed to fetch initial stats", e);
+        }
+
+        // Generate a unique ID for the account (use channel ID if available, else random)
+        const accountId = stats?.id || `mock_account_${Date.now()}`;
+
+        // Create account object
+        const newAccount = {
+            id: accountId,
+            name: stats?.title || "Novo Canal",
+            avatar: stats?.thumbnails?.default?.url || null,
+            token: token,
+            expiresAt: expiresAt,
+            stats: stats
+        };
+
+        setState(prev => {
+            // Check if account already exists
+            const existingIndex = prev.auth.connectedAccounts.findIndex(a => a.id === accountId);
+            let newConnectedAccounts = [...prev.auth.connectedAccounts];
+
+            if (existingIndex >= 0) {
+                newConnectedAccounts[existingIndex] = newAccount;
+            } else {
+                newConnectedAccounts.push(newAccount);
+            }
+
+            return {
+                ...prev,
+                auth: {
+                    ...prev.auth,
+                    youtubeToken: token,
+                    youtubeTokenExpiresAt: expiresAt,
+                    connectedAccounts: newConnectedAccounts,
+                    activeAccountId: accountId
+                },
+                channelStats: stats || prev.channelStats
+            };
+        });
+    }
+
+    function switchAccount(accountId) {
+        setState(prev => {
+            const account = prev.auth.connectedAccounts.find(a => a.id === accountId);
+            if (!account) return prev;
+
+            return {
+                ...prev,
+                auth: {
+                    ...prev.auth,
+                    youtubeToken: account.token,
+                    youtubeTokenExpiresAt: account.expiresAt,
+                    activeAccountId: account.id
+                },
+                channelStats: account.stats
+            };
+        });
+    }
+
+    function disconnectAccount(accountId) {
+        setState(prev => {
+            const newConnectedAccounts = prev.auth.connectedAccounts.filter(a => a.id !== accountId);
+
+            // If we removed the active account, switch to another or clear
+            let newActiveId = prev.auth.activeAccountId;
+            let newToken = prev.auth.youtubeToken;
+            let newExpires = prev.auth.youtubeTokenExpiresAt;
+            let newStats = prev.channelStats;
+
+            if (accountId === prev.auth.activeAccountId) {
+                if (newConnectedAccounts.length > 0) {
+                    // Switch to first available
+                    const nextAccount = newConnectedAccounts[0];
+                    newActiveId = nextAccount.id;
+                    newToken = nextAccount.token;
+                    newExpires = nextAccount.expiresAt;
+                    newStats = nextAccount.stats;
+                } else {
+                    // No accounts left
+                    newActiveId = null;
+                    newToken = null;
+                    newExpires = null;
+                    newStats = null;
+                }
+            }
+
+            return {
+                ...prev,
+                auth: {
+                    ...prev.auth,
+                    connectedAccounts: newConnectedAccounts,
+                    activeAccountId: newActiveId,
+                    youtubeToken: newToken,
+                    youtubeTokenExpiresAt: newExpires
+                },
+                channelStats: newStats
+            };
+        });
     }
 
     async function startOpusJob(input) {
@@ -826,20 +934,20 @@ export function useDashboardState() {
         setState,
         actions: {
             toggleItem,
-            addChecklistItem,
             addToUploadQueue,
             removeQueueItem,
             markQueueStatus,
-            startUploadQueue,
+            resetChecklist,
+            addChecklistItem,
             updateSettings,
             setYouTubeToken,
-            resetState,
-            resetChecklist,
-            removeHistoryItem,
+            switchAccount,
+            disconnectAccount,
             startOpusJob,
             checkOpusJob,
             removeOpusJob,
             refreshChannelStats,
-        },
+            removeHistoryItem
+        }
     };
 }

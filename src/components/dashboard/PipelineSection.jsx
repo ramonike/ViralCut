@@ -1,50 +1,130 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Button } from "../ui/button";
-import { Link as LinkIcon, Eye, ExternalLink, LayoutGrid, List } from "lucide-react";
+import { Link as LinkIcon, Eye, ExternalLink, LayoutGrid, List, Upload } from "lucide-react";
 
 export function PipelineSection({ state, actions }) {
     const { addToUploadQueue } = actions;
     const { settings, pipeline } = state;
     const [viewMode, setViewMode] = useState("list"); // 'list' | 'grid'
+    const [activeCreationTab, setActiveCreationTab] = useState("vizard"); // 'vizard' | 'upload'
+    const fileInputRef = useRef(null);
+
+    function handleFileSelect(e) {
+        const file = e.target.files?.[0];
+        if (file) {
+            addToUploadQueue({
+                title: file.name.replace(/\.[^/.]+$/, ""),
+                source: "upload",
+                platform: "YouTube Shorts",
+                file: file
+            });
+            e.target.value = "";
+            alert("Vídeo adicionado à fila de upload! 🚀");
+        }
+    }
 
     return (
         <section id="pipeline-section" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Link Drop Zone - Vizard.ai */}
-            <div className="glass-panel rounded-2xl p-1">
-                <div className="bg-surface-900/50 rounded-xl p-6 border border-dashed border-surface-700/50 hover:border-primary/50 hover:bg-surface-800/50 transition-all duration-300 group cursor-pointer relative overflow-hidden"
-                    onClick={() => window.open("https://vizard.ai/workspace", "_blank")}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={async (e) => {
-                        e.preventDefault();
-                        const text = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
-                        if (text) {
-                            try {
-                                await navigator.clipboard.writeText(text);
-                                alert("LINK COPIADO! 📋\nCole no Vizard.ai (Ctrl+V).");
-                                window.open("https://vizard.ai/workspace", "_blank");
-                            } catch (err) {
-                                prompt("Copie o link:", text);
-                                window.open("https://vizard.ai/workspace", "_blank");
-                            }
-                        }
-                    }}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            {/* Unified Creation Area */}
+            <div className="glass-panel rounded-2xl overflow-hidden">
+                <div className="flex border-b border-surface-700/50">
+                    <button
+                        onClick={() => setActiveCreationTab("vizard")}
+                        className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeCreationTab === "vizard"
+                            ? "bg-surface-800 text-white border-b-2 border-primary"
+                            : "text-slate-400 hover:text-white hover:bg-surface-800/50"
+                            }`}
+                    >
+                        <LinkIcon className="w-4 h-4" /> Novo Projeto Vizard
+                    </button>
+                    <button
+                        onClick={() => setActiveCreationTab("upload")}
+                        className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeCreationTab === "upload"
+                            ? "bg-surface-800 text-white border-b-2 border-primary"
+                            : "text-slate-400 hover:text-white hover:bg-surface-800/50"
+                            }`}
+                    >
+                        <Upload className="w-4 h-4" /> Upload de Vídeo
+                    </button>
+                </div>
 
-                    <div className="flex flex-col items-center gap-4 relative z-10">
-                        <div className="w-16 h-16 rounded-2xl bg-surface-800 shadow-lg shadow-black/20 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-surface-700">
-                            <LinkIcon className="w-8 h-8 text-primary group-hover:text-primary-light transition-colors" />
+                <div className="p-4">
+                    {activeCreationTab === "vizard" ? (
+                        <div className="bg-surface-900/50 rounded-xl p-8 border border-dashed border-surface-700/50 hover:border-primary/50 hover:bg-surface-800/50 transition-all duration-300 group cursor-pointer relative overflow-hidden text-center"
+                            onClick={() => window.open("https://vizard.ai/workspace", "_blank")}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={async (e) => {
+                                e.preventDefault();
+                                const text = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+                                if (text) {
+                                    try {
+                                        await navigator.clipboard.writeText(text);
+                                        alert("LINK COPIADO! 📋\nCole no Vizard.ai (Ctrl+V).");
+                                        window.open("https://vizard.ai/workspace", "_blank");
+                                    } catch (err) {
+                                        prompt("Copie o link:", text);
+                                        window.open("https://vizard.ai/workspace", "_blank");
+                                    }
+                                }
+                            }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="flex flex-col items-center gap-4 relative z-10">
+                                <div className="w-16 h-16 rounded-2xl bg-surface-800 shadow-lg shadow-black/20 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-surface-700">
+                                    <LinkIcon className="w-8 h-8 text-primary group-hover:text-primary-light transition-colors" />
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors">
+                                        Abrir Vizard.ai
+                                    </h3>
+                                    <p className="text-sm text-slate-400 max-w-xs mx-auto">
+                                        Arraste um link do YouTube aqui para copiar e abrir o editor.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-center space-y-1">
-                            <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors">
-                                Novo Projeto Vizard.ai
-                            </h3>
-                            <p className="text-sm text-slate-400 max-w-xs mx-auto">
-                                Arraste um link do YouTube aqui para copiar e abrir o editor.
-                            </p>
+                    ) : (
+                        <div className="bg-surface-900/50 rounded-xl p-8 border border-dashed border-surface-700/50 hover:border-primary/50 hover:bg-surface-800/50 transition-all duration-300 group cursor-pointer relative overflow-hidden text-center"
+                            onClick={() => fileInputRef.current?.click()}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                const file = e.dataTransfer.files?.[0];
+                                if (file) {
+                                    addToUploadQueue({
+                                        title: file.name.replace(/\.[^/.]+$/, ""),
+                                        source: "upload",
+                                        platform: "YouTube Shorts",
+                                        file: file
+                                    });
+                                    alert("Vídeo adicionado à fila de upload! 🚀");
+                                }
+                            }}
+                        >
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="video/*"
+                                onChange={handleFileSelect}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="flex flex-col items-center gap-4 relative z-10">
+                                <div className="w-16 h-16 rounded-2xl bg-surface-800 shadow-lg shadow-black/20 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 border border-surface-700">
+                                    <Upload className="w-8 h-8 text-primary group-hover:text-primary-light transition-colors" />
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors">
+                                        Upload de Arquivo
+                                    </h3>
+                                    <p className="text-sm text-slate-400 max-w-xs mx-auto">
+                                        Arraste um arquivo de vídeo ou clique para selecionar.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -89,11 +169,11 @@ export function PipelineSection({ state, actions }) {
                                 key={video.id}
                                 className={`group relative overflow-hidden transition-all duration-300 ${viewMode === "grid"
                                     ? "glass-card rounded-xl p-0 flex flex-col"
-                                    : "glass-card rounded-lg p-2 flex items-center gap-3 hover:translate-x-1"
+                                    : "glass-card rounded-lg p-2 flex items-center gap-4 hover:translate-x-1"
                                     }`}
                             >
                                 {/* Thumbnail */}
-                                <div className={`relative overflow-hidden bg-surface-900 ${viewMode === "grid" ? "w-full aspect-video rounded-t-xl" : "w-24 h-16 rounded-md flex-shrink-0"
+                                <div className={`relative overflow-hidden bg-surface-900 ${viewMode === "grid" ? "w-full aspect-video rounded-t-xl" : "w-32 h-20 rounded-md flex-shrink-0"
                                     }`}>
                                     <img
                                         src={video.thumbnail}

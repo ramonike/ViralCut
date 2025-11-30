@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS, API_URL } from '../config/api';
-import { PlusCircle, LayoutDashboard, UserCircle, Lock } from "lucide-react";
+import { PlusCircle, LayoutDashboard, UserCircle, Lock, Share2, Check } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { FloatingCTA } from "./ui/FloatingCTA";
@@ -18,7 +18,7 @@ export default function Dashboard() {
     const [message, setMessage] = useState("");
     const [activeTab, setActiveTab] = useState("dashboard");
     const [user, setUser] = useState(null);
-    const linkInputRef = useRef(null);
+    const [isCopied, setIsCopied] = useState(false);
 
     useEffect(() => {
         if (typeof window !== "undefined") setShareLink(window.location.href);
@@ -39,25 +39,28 @@ export default function Dashboard() {
     async function copyLink() {
         if (!shareLink) return;
         try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(shareLink);
-                setMessage("Link copiado para a área de transferência!");
-                return;
-            }
+            await navigator.clipboard.writeText(shareLink);
+            setIsCopied(true);
+            setMessage("Link copiado para a área de transferência!");
+            setTimeout(() => setIsCopied(false), 2000);
         } catch (err) {
-            console.warn("Clipboard API failed:", err);
-        }
-        try {
-            if (linkInputRef.current) {
-                linkInputRef.current.select();
+            console.warn("Clipboard API failed, trying fallback:", err);
+            // Fallback
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = shareLink;
+                document.body.appendChild(textArea);
+                textArea.select();
                 document.execCommand("copy");
-                setMessage("Link copiado (fallback). Cole onde quiser.");
-                return;
+                document.body.removeChild(textArea);
+                setIsCopied(true);
+                setMessage("Link copiado!");
+                setTimeout(() => setIsCopied(false), 2000);
+            } catch (fallbackErr) {
+                console.error("Fallback copy failed:", fallbackErr);
+                setMessage("Não foi possível copiar o link.");
             }
-        } catch (err) {
-            console.error("Fallback copy failed:", err);
         }
-        setMessage("Não foi possível copiar automaticamente. Selecione o link e copie manualmente.");
     }
 
     function seedExample() {
@@ -122,10 +125,16 @@ export default function Dashboard() {
 
                         {/* Actions */}
                         <div className="flex gap-2 items-center">
-                            <div className="hidden sm:flex items-center gap-2 bg-slate-800/50 p-1 rounded-lg border border-slate-700/50 backdrop-blur-sm">
-                                <Input ref={linkInputRef} value={shareLink} readOnly className="w-32 md:w-48 text-xs bg-transparent border-none text-slate-400 focus-visible:ring-0 h-8" />
-                                <Button onClick={copyLink} size="sm" variant="ghost" className="h-8 text-blue-400 hover:text-white hover:bg-slate-700 transition-all">Copiar</Button>
-                            </div>
+                            <Button
+                                onClick={copyLink}
+                                variant="outline"
+                                size="sm"
+                                className={`hidden sm:flex items-center gap-2 border-slate-700/50 bg-slate-800/50 backdrop-blur-sm transition-all ${isCopied ? "text-green-400 border-green-500/30 bg-green-500/10" : "text-slate-400 hover:text-white hover:bg-slate-800 hover:border-slate-600"}`}
+                            >
+                                {isCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                                <span className="text-xs font-medium">{isCopied ? "Copiado!" : "Compartilhar Perfil"}</span>
+                            </Button>
+
                             <Button onClick={() => seedExample()} className="bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all hover:scale-105 shadow-lg shadow-blue-600/20">
                                 <PlusCircle className="mr-0 md:mr-2 h-4 w-4" /> <span className="hidden md:inline">Seed</span>
                             </Button>

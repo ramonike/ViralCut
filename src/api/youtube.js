@@ -2,24 +2,25 @@
 export async function fetchChannelDetails(token) {
     console.log("[YouTube API] fetchChannelDetails called with token:", token ? "EXISTS" : "NULL");
 
-    if (!token || token === "MOCK_TOKEN") {
-        console.log("[YouTube API] Using MOCK data");
+    if (!token || token.startsWith("MOCK_TOKEN")) {
+        console.log("[YouTube API] Using MOCK data for token:", token);
+        const isSecondary = token.includes("2") || token.length > 20;
         return {
-            id: "UC_mock_channel_id",
-            title: "PetCutsBR (Mock)",
-            description: "Canal de cortes virais sobre pets e curiosidades animais. Videos novos todo dia!",
-            customUrl: "@petcutsbr_mock",
+            id: isSecondary ? "UC_mock_channel_id_2" : "UC_mock_channel_id",
+            title: isSecondary ? "CiênciaPraBurro (Backup)" : "PetCutsBR (Mock)",
+            description: isSecondary ? "Canal secundário de testes." : "Canal de cortes virais sobre pets e curiosidades animais. Videos novos todo dia!",
+            customUrl: isSecondary ? "@cienciaburro_backup" : "@petcutsbr_mock",
             publishedAt: "2023-01-15T10:00:00Z",
             thumbnails: {
-                default: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
-                medium: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
-                high: { url: "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
+                default: { url: isSecondary ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Science" : "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
+                medium: { url: isSecondary ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Science" : "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
+                high: { url: isSecondary ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Science" : "https://api.dicebear.com/7.x/avataaars/svg?seed=PetCuts" },
             },
             statistics: {
-                viewCount: "154320",
-                subscriberCount: "1250",
+                viewCount: isSecondary ? "5432" : "154320",
+                subscriberCount: isSecondary ? "120" : "1250",
                 hiddenSubscriberCount: false,
-                videoCount: "45",
+                videoCount: isSecondary ? "5" : "45",
             },
             brandingSettings: {
                 image: {
@@ -74,7 +75,7 @@ export async function fetchChannelDetails(token) {
 export async function fetchChannelVideos(token, maxResults = 50) {
     console.log("[YouTube API] fetchChannelVideos called, maxResults:", maxResults);
 
-    if (!token || token === "MOCK_TOKEN") {
+    if (!token || token.startsWith("MOCK_TOKEN")) {
         console.log("[YouTube API] Using MOCK videos");
         // Retornar vídeos mock para desenvolvimento
         return [
@@ -204,7 +205,7 @@ export async function fetchChannelVideos(token, maxResults = 50) {
 export async function fetchChannelAnalytics(token) {
     console.log("[YouTube API] fetchChannelAnalytics called");
 
-    if (!token || token === "MOCK_TOKEN") {
+    if (!token || token.startsWith("MOCK_TOKEN")) {
         console.log("[YouTube API] Using MOCK analytics");
         // Generate dynamic mock data for the last 7 days
         const mockData = [];
@@ -271,7 +272,7 @@ export async function fetchChannelAnalytics(token) {
 export async function searchVideos(token, query = "ciência curiosidades podcast") {
     console.log("[YouTube API] searchVideos called with query:", query);
 
-    if (!token || token === "MOCK_TOKEN") {
+    if (!token || token.startsWith("MOCK_TOKEN")) {
         console.log("[YouTube API] Using MOCK search results");
         return [
             {

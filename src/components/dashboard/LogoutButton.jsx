@@ -1,5 +1,5 @@
 import { LogOut } from "lucide-react";
-import { API_ENDPOINTS, API_URL } from '../config/api';
+import { API_ENDPOINTS, API_URL } from '../../config/api';
 import { useNavigate } from "react-router-dom";
 
 export function LogoutButton() {

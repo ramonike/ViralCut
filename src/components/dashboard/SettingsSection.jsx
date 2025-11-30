@@ -6,7 +6,7 @@ import { GoogleAuthButton } from "./GoogleAuthButton";
 
 export function SettingsSection({ state, actions }) {
     const { settings, auth } = state;
-    const { updateSettings, setYouTubeToken } = actions;
+    const { updateSettings, setYouTubeToken, switchAccount, disconnectAccount } = actions;
 
     const isConnected = auth?.youtubeToken && auth?.youtubeTokenExpiresAt > Date.now();
 

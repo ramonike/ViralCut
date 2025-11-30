@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Skeleton } from "../ui/skeleton";
-import { UploadCloud, FileCheck, Trash2, Calendar as CalendarIcon, CheckCircle2, Sparkles, ExternalLink, RefreshCw, TrendingUp, Search, Clock, X, Plus } from "lucide-react";
+import { UploadCloud, FileCheck, Trash2, Calendar as CalendarIcon, CheckCircle2, Sparkles, ExternalLink, RefreshCw, TrendingUp, Search, Clock, X, Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 // Simple Modal Component for Scheduling
@@ -131,6 +131,7 @@ export function SidebarRight({ state, actions }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeQueueTab, setActiveQueueTab] = useState('queue'); // 'queue' | 'scheduled'
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false); // Default collapsed
     const isLoading = !state.channelStats;
 
     // Filter queue based on tab
@@ -181,10 +182,18 @@ export function SidebarRight({ state, actions }) {
     const analyticsData = getAnalyticsData();
 
     // Calendar Logic
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    const handlePrevMonth = () => {
+        setCurrentDate(new Date(currentYear, currentMonth - 1, 1));
+    };
+
+    const handleNextMonth = () => {
+        setCurrentDate(new Date(currentYear, currentMonth + 1, 1));
+    };
 
     const getDayStatus = (day) => {
         const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -363,108 +372,109 @@ export function SidebarRight({ state, actions }) {
             </div>
 
             {/* Sugestões para Cortes */}
-            <div className="glass-panel rounded-xl overflow-hidden">
-                <div className="p-4 border-b border-surface-700/50 flex items-center justify-between bg-gradient-to-r from-purple-900/20 to-transparent">
+            <div className="glass-panel rounded-xl overflow-hidden transition-all duration-500">
+                <div
+                    className="p-4 border-b border-surface-700/50 flex items-center justify-between bg-gradient-to-r from-purple-900/20 to-transparent cursor-pointer hover:bg-surface-800/50 transition-colors"
+                    onClick={() => setIsSuggestionsOpen(!isSuggestionsOpen)}
+                >
                     <h3 className="text-slate-100 font-bold flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-purple-400" />
                         Sugestões Virais
                     </h3>
-                    <div className="flex items-center gap-1">
-                        {showSearch ? (
-                            <input
-                                autoFocus
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        actions.refreshChannelStats(true, searchTerm);
-                                    }
-                                }}
-                                onBlur={() => {
-                                    if (!searchTerm) setShowSearch(false);
-                                }}
-                                placeholder="Buscar..."
-                                className="bg-surface-800 text-xs text-slate-200 rounded px-2 py-1 border border-surface-700 focus:border-purple-500 outline-none w-24 transition-all focus:w-32"
-                            />
-                        ) : (
-                            <button
-                                onClick={() => setShowSearch(true)}
-                                className="text-xs text-slate-500 hover:text-purple-400 transition-colors p-1 rounded hover:bg-surface-800"
-                                title="Buscar tema"
-                            >
-                                <Search className="w-3 h-3" />
-                            </button>
-                        )}
-                        <button
-                            onClick={() => actions.refreshChannelStats(true)}
-                            className="text-xs text-slate-500 hover:text-purple-400 transition-colors p-1 rounded hover:bg-surface-800"
-                            title="Atualizar sugestões"
-                        >
-                            <RefreshCw className="w-3 h-3" />
-                        </button>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/20">
+                            {state.suggestions?.length || 0}
+                        </span>
+                        {isSuggestionsOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                     </div>
                 </div>
 
-                <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
-                    {isLoading ? (
-                        <>
-                            <Skeleton className="h-16 w-full rounded-lg" />
-                            <Skeleton className="h-16 w-full rounded-lg" />
-                            <Skeleton className="h-16 w-full rounded-lg" />
-                        </>
-                    ) : state.suggestions && state.suggestions.length > 0 ? (
-                        state.suggestions.map((video) => (
-                            <div
-                                key={video.id}
-                                className="group relative glass-card rounded-lg p-2 hover:bg-surface-800/80 cursor-grab active:cursor-grabbing transition-all duration-300 hover:translate-x-1"
-                                draggable="true"
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData("text/plain", video.url);
-                                    e.dataTransfer.setData("text/uri-list", video.url);
-                                    e.dataTransfer.effectAllowed = "copy";
-                                }}
-                            >
-                                <div className="flex gap-3 pointer-events-none">
-                                    <div className="relative w-24 h-14 rounded-md overflow-hidden flex-shrink-0 bg-surface-900 shadow-md">
-                                        <img
-                                            src={video.thumbnails?.medium?.url}
-                                            alt={video.title}
-                                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
-                                        />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                    </div>
-                                    <div className="flex-1 min-w-0 py-0.5">
-                                        <h4 className="text-slate-200 text-xs font-medium leading-snug line-clamp-2 group-hover:text-purple-300 transition-colors">
-                                            {video.title}
-                                        </h4>
-                                        <p className="text-slate-500 text-[10px] mt-1 truncate font-medium">
-                                            {video.channelTitle}
-                                        </p>
-                                    </div>
-                                </div>
-                                <a
-                                    href={video.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px] rounded-lg z-10"
-                                >
-                                    <ExternalLink className="w-5 h-5 text-white drop-shadow-lg" />
-                                </a>
+                {isSuggestionsOpen && (
+                    <div className="p-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-1 animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="relative flex-1">
+                                <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            actions.refreshChannelStats(true, searchTerm);
+                                        }
+                                    }}
+                                    placeholder="Buscar tema..."
+                                    className="w-full bg-surface-800 text-xs text-slate-200 rounded-lg pl-7 pr-2 py-1.5 border border-surface-700 focus:border-purple-500 outline-none transition-all"
+                                />
                             </div>
-                        ))
-                    ) : (
-                        <div className="text-center py-6 text-slate-500 text-xs">
-                            <p>Nenhuma sugestão encontrada.</p>
                             <button
-                                onClick={() => actions.refreshChannelStats()}
-                                className="mt-2 text-purple-400 hover:text-purple-300 underline"
+                                onClick={() => actions.refreshChannelStats(true)}
+                                className="text-xs text-slate-400 hover:text-purple-400 transition-colors p-1.5 rounded hover:bg-surface-800 border border-transparent hover:border-surface-700"
+                                title="Atualizar sugestões"
                             >
-                                Tentar novamente
+                                <RefreshCw className="w-3 h-3" />
                             </button>
                         </div>
-                    )}
-                </div>
+
+                        {isLoading ? (
+                            <>
+                                <Skeleton className="h-16 w-full rounded-lg" />
+                                <Skeleton className="h-16 w-full rounded-lg" />
+                                <Skeleton className="h-16 w-full rounded-lg" />
+                            </>
+                        ) : state.suggestions && state.suggestions.length > 0 ? (
+                            state.suggestions.map((video) => (
+                                <div
+                                    key={video.id}
+                                    className="group relative glass-card rounded-lg p-2 hover:bg-surface-800/80 cursor-grab active:cursor-grabbing transition-all duration-300 hover:translate-x-1"
+                                    draggable="true"
+                                    onDragStart={(e) => {
+                                        e.dataTransfer.setData("text/plain", video.url);
+                                        e.dataTransfer.setData("text/uri-list", video.url);
+                                        e.dataTransfer.effectAllowed = "copy";
+                                    }}
+                                >
+                                    <div className="flex gap-3 pointer-events-none">
+                                        <div className="relative w-24 h-14 rounded-md overflow-hidden flex-shrink-0 bg-surface-900 shadow-md">
+                                            <img
+                                                src={video.thumbnails?.medium?.url}
+                                                alt={video.title}
+                                                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                        </div>
+                                        <div className="flex-1 min-w-0 py-0.5">
+                                            <h4 className="text-slate-200 text-xs font-medium leading-snug line-clamp-2 group-hover:text-purple-300 transition-colors">
+                                                {video.title}
+                                            </h4>
+                                            <p className="text-slate-500 text-[10px] mt-1 truncate font-medium">
+                                                {video.channelTitle}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <a
+                                        href={video.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px] rounded-lg z-10"
+                                    >
+                                        <ExternalLink className="w-5 h-5 text-white drop-shadow-lg" />
+                                    </a>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-6 text-slate-500 text-xs">
+                                <p>Nenhuma sugestão encontrada.</p>
+                                <button
+                                    onClick={() => actions.refreshChannelStats()}
+                                    className="mt-2 text-purple-400 hover:text-purple-300 underline"
+                                >
+                                    Tentar novamente
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Calendar */}
@@ -476,7 +486,11 @@ export function SidebarRight({ state, actions }) {
                 </div>
                 <div className="p-4">
                     <div className="text-xs text-slate-400 mb-4 flex justify-between items-center font-medium uppercase tracking-wider">
-                        <span>{today.toLocaleString('default', { month: 'long' })} {currentYear}</span>
+                        <div className="flex items-center gap-2">
+                            <button onClick={handlePrevMonth} className="hover:text-white transition-colors p-1 hover:bg-surface-700 rounded"><ChevronLeft className="w-4 h-4" /></button>
+                            <span>{currentDate.toLocaleString('default', { month: 'long' })} {currentYear}</span>
+                            <button onClick={handleNextMonth} className="hover:text-white transition-colors p-1 hover:bg-surface-700 rounded"><ChevronRight className="w-4 h-4" /></button>
+                        </div>
                         <div className="flex gap-2">
                             <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Postado</span>
                             <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-primary"></div> Hoje</span>

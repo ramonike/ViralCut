@@ -10,62 +10,62 @@ const BrandButton = ({ type, url }) => {
         google: {
             label: "Google",
             icon: <span className="font-bold text-lg">G</span>,
-            className: "bg-white text-slate-900 hover:bg-slate-200"
+            className: "text-white bg-white/10 hover:bg-white/20 border border-white/10"
         },
         youtube: {
             label: "YouTube",
             icon: <Youtube className="w-4 h-4" />,
-            className: "bg-[#FF0000] text-white hover:bg-[#CC0000]"
+            className: "text-red-500 bg-red-500/10 hover:bg-red-500/20 border border-red-500/10"
         },
         youtube_studio: {
             label: "Studio",
             icon: <Video className="w-4 h-4" />,
-            className: "bg-[#FF0000] text-white hover:bg-[#CC0000]"
+            className: "text-red-500 bg-red-500/10 hover:bg-red-500/20 border border-red-500/10"
         },
         youtube_monetization: {
             label: "Monetização",
             icon: <DollarSign className="w-4 h-4" />,
-            className: "bg-[#2bb24c] text-white hover:bg-[#23963f]"
+            className: "text-green-500 bg-green-500/10 hover:bg-green-500/20 border border-green-500/10"
         },
         tiktok: {
             label: "TikTok",
             icon: <span className="font-bold">♪</span>,
-            className: "bg-black text-white border border-slate-700 hover:bg-slate-900"
+            className: "text-pink-500 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/10"
         },
         tiktok_marketplace: {
             label: "Marketplace",
             icon: <ShoppingBag className="w-4 h-4" />,
-            className: "bg-black text-white border border-slate-700 hover:bg-slate-900"
+            className: "text-pink-500 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/10"
         },
         canva: {
             label: "Canva",
             icon: <Image className="w-4 h-4" />,
-            className: "bg-[#00C4CC] text-white hover:bg-[#009FA6]"
+            className: "text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/10"
         },
         chatgpt: {
             label: "ChatGPT",
             icon: <MessageSquare className="w-4 h-4" />,
-            className: "bg-[#74AA9C] text-white hover:bg-[#5E8A7E]"
+            className: "text-emerald-400 bg-emerald-400/10 hover:bg-emerald-400/20 border border-emerald-400/10"
         },
         opus: {
             label: "OpusClip",
             icon: <Video className="w-4 h-4" />,
-            className: "bg-[#5D3FD3] text-white hover:bg-[#4B32AA]"
+            className: "text-violet-400 bg-violet-400/10 hover:bg-violet-400/20 border border-violet-400/10"
         },
         zapier: {
             label: "Zapier",
             icon: <Zap className="w-4 h-4" />,
-            className: "bg-[#FF4F00] text-white hover:bg-[#CC3F00]"
+            className: "text-orange-500 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/10"
         },
         make: {
             label: "Make",
             icon: <Zap className="w-4 h-4" />,
-            className: "bg-[#6D28D9] text-white hover:bg-[#5B21B6]"
+            className: "text-purple-500 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/10"
         },
         default: {
             label: "Link",
             icon: <ExternalLink className="w-4 h-4" />,
-            className: "bg-slate-700 text-white hover:bg-slate-600"
+            className: "text-slate-400 bg-slate-700/30 hover:bg-slate-700/50 border border-slate-700/50"
         }
     };
 
@@ -76,12 +76,11 @@ const BrandButton = ({ type, url }) => {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all shadow-sm ${style.className}`}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shadow-sm ${style.className}`}
             onClick={(e) => e.stopPropagation()}
-            title={`Abrir ${style.label}`}
+            title={style.label}
         >
             {style.icon}
-            <span className="hidden sm:inline">{style.label}</span>
         </a>
     );
 };
