@@ -17,7 +17,7 @@ const VerifyEmailPage = () => {
         }
 
         // Verify email
-        fetch(`http://localhost:3000/api/auth/verify-email?token=${token}`, {
+        fetch(`${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`, {
             method: 'GET',
             credentials: 'include',
         })
