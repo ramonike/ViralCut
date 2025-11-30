@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_ENDPOINTS, API_URL } from '../../config/api';
+import { API_ENDPOINTS, API_URL } from '../config/api';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const VerifyEmailPage = () => {
