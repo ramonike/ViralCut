@@ -14,6 +14,16 @@ const defaultData = {
         ctaText: "🚀 Domine o Método ViralCuts",
         ctaLink: "https://seu-curso-ou-metodo.com",
         opusApiKey: "", // New setting
+
+        // Upload Defaults
+        defaultVisibility: "public",
+        defaultCategory: "24", // Entertainment
+        defaultTags: "shorts, viral, clips",
+
+        // Notifications
+        notifyUpload: true,
+        notifyError: true,
+        notifyWeekly: false,
     },
     pipeline: {
         jobs: [], // { id, status, originalName, clips: [] }
@@ -149,7 +159,9 @@ const defaultData = {
         suggestions: { data: null, timestamp: null },
         analytics: { data: null, timestamp: null }
     },
-    quotaExceeded: false
+    quotaExceeded: false,
+    quota: { used: 0, limit: 10000, lastReset: Date.now() }, // API Quota tracking
+    channelsData: {} // Stores data for each channel: { [accountId]: { history, uploadQueue, suggestions, recentUploads, analytics, channelStats } }
 };
 
 function loadState() {
@@ -161,16 +173,19 @@ function loadState() {
         return {
             ...defaultData,
             ...loaded,
+            ...loaded,
             history: loaded.history || {},
             channelStats: loaded.channelStats || null,
             settings: { ...defaultData.settings, ...(loaded.settings || {}) },
+            quota: loaded.quota || defaultData.quota,
             pipeline: loaded.pipeline || { jobs: [] },
             auth: {
                 ...defaultData.auth,
                 ...(loaded.auth || {}),
                 connectedAccounts: loaded.auth?.connectedAccounts || [],
                 activeAccountId: loaded.auth?.activeAccountId || null
-            }
+            },
+            channelsData: loaded.channelsData || {}
         };
     } catch (e) {
         console.error("Failed to load state", e);
@@ -205,6 +220,32 @@ export function exportCSV(rows, filename = "viralcuts_export.csv") {
 
 export function useDashboardState() {
     const [state, setState] = useState(loadState);
+
+    // Track API Quota Usage
+    const trackQuota = (cost) => {
+        setState(prev => {
+            const now = new Date();
+            // Convert to Pacific Time to check day (YouTube resets at midnight PT)
+            const ptDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+            const lastDate = new Date(new Date(prev.quota.lastReset).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+
+            let newUsed = prev.quota.used;
+
+            // Reset if new day in PT
+            if (ptDate.getDate() !== lastDate.getDate() || ptDate.getMonth() !== lastDate.getMonth() || ptDate.getFullYear() !== lastDate.getFullYear()) {
+                newUsed = 0;
+            }
+
+            return {
+                ...prev,
+                quota: {
+                    ...prev.quota,
+                    used: newUsed + cost,
+                    lastReset: now.getTime()
+                }
+            };
+        });
+    };
 
     // Helper function to sync YouTube videos to calendar history
     const syncVideosToCalendar = (videos, currentHistory) => {
@@ -329,10 +370,19 @@ export function useDashboardState() {
         const interval = setInterval(() => {
             const now = new Date();
             state.uploadQueue.forEach(item => {
-                if (item.status === "ready" && item.scheduledAt) {
+                // If it has publishAt (native scheduling), upload IMMEDIATELY
+                // The platform (YouTube) will handle the release time
+                if (item.status === "ready" && item.publishAt) {
+                    console.log(`[AutoUpload] Triggering IMMEDIATE upload for ${item.title} (Native Schedule: ${item.publishAt})`);
+                    markQueueStatus(item.id, "uploading");
+                    return;
+                }
+
+                // Legacy/Dashboard scheduling (only scheduledAt): Wait for time
+                if (item.status === "ready" && item.scheduledAt && !item.publishAt) {
                     const scheduledTime = new Date(item.scheduledAt);
                     if (scheduledTime <= now) {
-                        console.log(`[AutoUpload] Triggering upload for ${item.title} (Scheduled: ${item.scheduledAt})`);
+                        console.log(`[AutoUpload] Triggering upload for ${item.title} (Scheduled: ${scheduledTime})`);
                         markQueueStatus(item.id, "uploading");
                     }
                 }
@@ -416,7 +466,7 @@ export function useDashboardState() {
         setState({ ...state, checklists: newLists });
     }
 
-    function addToUploadQueue({ title, source = "manual", platform = "YouTube Shorts", scheduledAt = null, file = null }) {
+    function addToUploadQueue({ title, source = "manual", platform = "YouTube Shorts", scheduledAt = null, file = null, privacyStatus = "private", publishAt = null, description = "" }) {
         const item = {
             id: `q_${Date.now()}`,
             title,
@@ -425,6 +475,9 @@ export function useDashboardState() {
             scheduledAt,
             status: "ready",
             file,
+            privacyStatus,
+            publishAt,
+            description
         };
         setState({ ...state, uploadQueue: [...state.uploadQueue, item] });
     }
@@ -474,6 +527,7 @@ export function useDashboardState() {
             if (!item) return;
             try {
                 const result = await uploadVideo(item, state.auth.youtubeToken, item.file);
+                trackQuota(1600); // Upload cost ~1600 units
 
                 setState((prev) => {
                     const safeHistory = prev.history || {};
@@ -642,14 +696,6 @@ export function useDashboardState() {
         if (!token) {
             // Handle full logout if passed null
             setState(prev => ({
-                ...prev,
-                auth: {
-                    ...prev.auth,
-                    youtubeToken: null,
-                    youtubeTokenExpiresAt: null,
-                    activeAccountId: null
-                },
-                channelStats: null
             }));
             return;
         }
@@ -658,8 +704,19 @@ export function useDashboardState() {
         let stats = null;
         try {
             stats = await fetchChannelDetails(token);
+            if (stats) {
+                trackQuota(1); // Channel details cost 1 unit
+            }
         } catch (e) {
             console.error("Failed to fetch initial stats", e);
+        }
+
+        // CRITICAL FIX: If we failed to get stats and it's NOT a mock token, abort.
+        // This prevents creating "Novo Canal" duplicates with random IDs when API fails.
+        if (!stats && !token.startsWith("MOCK_TOKEN")) {
+            console.error("Aborting account addition: Could not fetch channel details.");
+            alert("Não foi possível obter os detalhes do canal. Verifique a cota da API ou tente novamente.");
+            return;
         }
 
         // Generate a unique ID for the account (use channel ID if available, else random)
@@ -686,6 +743,44 @@ export function useDashboardState() {
                 newConnectedAccounts.push(newAccount);
             }
 
+            // Save current channel data if there is an active account
+            const currentChannelsData = { ...prev.channelsData };
+            if (prev.auth.activeAccountId) {
+                currentChannelsData[prev.auth.activeAccountId] = {
+                    history: prev.history,
+                    uploadQueue: prev.uploadQueue,
+                    suggestions: prev.suggestions,
+                    recentUploads: prev.recentUploads,
+                    analytics: prev.analytics,
+                    channelStats: prev.channelStats
+                };
+            }
+
+            // Load new channel data
+            let newChannelData;
+
+            if (existingIndex === -1) {
+                newChannelData = {
+                    history: {},
+                    uploadQueue: [],
+                    suggestions: [],
+                    recentUploads: [],
+                    analytics: { views24h: [] },
+                    channelStats: stats
+                };
+                // Ensure we overwrite any existing ghost data for this ID
+                currentChannelsData[accountId] = newChannelData;
+            } else {
+                newChannelData = currentChannelsData[accountId] || {
+                    history: {},
+                    uploadQueue: [],
+                    suggestions: [],
+                    recentUploads: [],
+                    analytics: { views24h: [] },
+                    channelStats: stats
+                };
+            }
+
             return {
                 ...prev,
                 auth: {
@@ -695,7 +790,14 @@ export function useDashboardState() {
                     connectedAccounts: newConnectedAccounts,
                     activeAccountId: accountId
                 },
-                channelStats: stats || prev.channelStats
+                channelsData: currentChannelsData,
+                // Load data for the new account
+                history: newChannelData.history || {},
+                uploadQueue: newChannelData.uploadQueue || [],
+                suggestions: newChannelData.suggestions || [],
+                recentUploads: newChannelData.recentUploads || [],
+                analytics: newChannelData.analytics || { views24h: [] },
+                channelStats: stats || newChannelData.channelStats || prev.channelStats
             };
         });
     }
@@ -705,6 +807,29 @@ export function useDashboardState() {
             const account = prev.auth.connectedAccounts.find(a => a.id === accountId);
             if (!account) return prev;
 
+            // Save current channel data
+            const currentChannelsData = { ...prev.channelsData };
+            if (prev.auth.activeAccountId) {
+                currentChannelsData[prev.auth.activeAccountId] = {
+                    history: prev.history,
+                    uploadQueue: prev.uploadQueue,
+                    suggestions: prev.suggestions,
+                    recentUploads: prev.recentUploads,
+                    analytics: prev.analytics,
+                    channelStats: prev.channelStats
+                };
+            }
+
+            // Load target channel data
+            const targetChannelData = currentChannelsData[accountId] || {
+                history: {},
+                uploadQueue: [],
+                suggestions: [],
+                recentUploads: [],
+                analytics: { views24h: [] },
+                channelStats: account.stats
+            };
+
             return {
                 ...prev,
                 auth: {
@@ -713,7 +838,14 @@ export function useDashboardState() {
                     youtubeTokenExpiresAt: account.expiresAt,
                     activeAccountId: account.id
                 },
-                channelStats: account.stats
+                channelsData: currentChannelsData,
+                // Restore data
+                history: targetChannelData.history || {},
+                uploadQueue: targetChannelData.uploadQueue || [],
+                suggestions: targetChannelData.suggestions || [],
+                recentUploads: targetChannelData.recentUploads || [],
+                analytics: targetChannelData.analytics || { views24h: [] },
+                channelStats: account.stats || targetChannelData.channelStats || prev.channelStats
             };
         });
     }
@@ -727,6 +859,11 @@ export function useDashboardState() {
             let newToken = prev.auth.youtubeToken;
             let newExpires = prev.auth.youtubeTokenExpiresAt;
             let newStats = prev.channelStats;
+            let newHistory = prev.history;
+            let newQueue = prev.uploadQueue;
+            let newSuggestions = prev.suggestions;
+            let newRecent = prev.recentUploads;
+            let newAnalytics = prev.analytics;
 
             if (accountId === prev.auth.activeAccountId) {
                 if (newConnectedAccounts.length > 0) {
@@ -736,12 +873,25 @@ export function useDashboardState() {
                     newToken = nextAccount.token;
                     newExpires = nextAccount.expiresAt;
                     newStats = nextAccount.stats;
+
+                    // Load its data
+                    const nextData = prev.channelsData[nextAccount.id] || {};
+                    newHistory = nextData.history || {};
+                    newQueue = nextData.uploadQueue || [];
+                    newSuggestions = nextData.suggestions || [];
+                    newRecent = nextData.recentUploads || [];
+                    newAnalytics = nextData.analytics || { views24h: [] };
                 } else {
                     // No accounts left
                     newActiveId = null;
                     newToken = null;
                     newExpires = null;
                     newStats = null;
+                    newHistory = {};
+                    newQueue = [];
+                    newSuggestions = [];
+                    newRecent = [];
+                    newAnalytics = { views24h: [] };
                 }
             }
 
@@ -754,10 +904,16 @@ export function useDashboardState() {
                     youtubeToken: newToken,
                     youtubeTokenExpiresAt: newExpires
                 },
-                channelStats: newStats
+                channelStats: newStats,
+                history: newHistory,
+                uploadQueue: newQueue,
+                suggestions: newSuggestions,
+                recentUploads: newRecent,
+                analytics: newAnalytics
             };
         });
     }
+
 
     async function startOpusJob(input) {
         const apiKey = state.settings.opusApiKey;
@@ -839,24 +995,74 @@ export function useDashboardState() {
         }
 
         try {
-            console.log("[refreshChannelStats] Fetching fresh data");
+            console.log("[refreshChannelStats] Fetching fresh data (Parallel)");
 
-            // 1. Channel Details
-            const stats = await fetchChannelDetails(state.auth.youtubeToken);
-
-            // 2. Recent Videos
-            const videos = await fetchChannelVideos(state.auth.youtubeToken);
-
-            // 3. Suggestions (Search)
+            // Prepare query for suggestions
             let queryToUse = customQuery;
             if (!queryToUse) {
                 const queries = ["curiosidades mundo", "ciência tecnologia", "fatos históricos", "animais incríveis", "mistérios universo", "dicas produtividade", "saúde bem estar"];
                 queryToUse = queries[Math.floor(Math.random() * queries.length)];
             }
             console.log(`[refreshChannelStats] Searching for: ${queryToUse}`);
-            const suggestions = await searchVideos(state.auth.youtubeToken, queryToUse);
 
-            // Update State
+            // Execute requests in parallel with allSettled to handle individual failures
+            const results = await Promise.allSettled([
+                fetchChannelDetails(state.auth.youtubeToken),
+                fetchChannelVideos(state.auth.youtubeToken),
+                searchVideos(state.auth.youtubeToken, queryToUse)
+            ]);
+
+            // Extract results or use fallback
+            const stats = results[0].status === 'fulfilled' ? results[0].value : null;
+            const videos = results[1].status === 'fulfilled' ? results[1].value : null;
+            const suggestions = results[2].status === 'fulfilled' ? results[2].value : null;
+
+            // Check if any failed due to quota
+            const quotaError = results.some(r =>
+                r.status === 'rejected' && r.reason?.message && /quota/i.test(r.reason.message)
+            );
+
+            if (quotaError) {
+                console.warn("YouTube API quota exceeded. Switching to fallback mode.");
+                setState(prev => ({ ...prev, quotaExceeded: true }));
+
+                // Use MOCK data for failed calls with error handling
+                try {
+                    const mockStats = stats || await fetchChannelDetails("MOCK_TOKEN").catch(() => null);
+                    const mockVideos = videos || await fetchChannelVideos("MOCK_TOKEN").catch(() => []);
+                    const mockSuggestions = suggestions || await searchVideos("MOCK_TOKEN", queryToUse).catch(() => []);
+
+                    setState(prev => {
+                        const newHistory = mockVideos ? syncVideosToCalendar(mockVideos, prev.history) : prev.history;
+
+                        return {
+                            ...prev,
+                            channelStats: mockStats || prev.channelStats,
+                            recentUploads: mockVideos || prev.recentUploads,
+                            suggestions: mockSuggestions || prev.suggestions,
+                            history: newHistory,
+                            quotaExceeded: true,
+                            cache: {
+                                ...prev.cache,
+                                channelStats: mockStats ? { data: mockStats, timestamp: now } : prev.cache.channelStats,
+                                recentUploads: mockVideos ? { data: mockVideos, timestamp: now } : prev.cache.recentUploads,
+                                suggestions: mockSuggestions ? { data: mockSuggestions, timestamp: now } : prev.cache.suggestions
+                            }
+                        };
+                    });
+                } catch (mockError) {
+                    console.error("Failed to load MOCK fallback data:", mockError);
+                    // Even if MOCK fails, set quotaExceeded flag so UI shows the warning
+                    setState(prev => ({ ...prev, quotaExceeded: true }));
+                }
+
+                return true;
+            }
+
+            // Track Quota only if no quota error (successful calls)
+            trackQuota(110);
+
+            // Update State with successful results
             setState(prev => {
                 const newHistory = videos ? syncVideosToCalendar(videos, prev.history) : prev.history;
 
@@ -880,9 +1086,9 @@ export function useDashboardState() {
         } catch (e) {
             console.error("Failed to refresh stats", e);
 
-            if (e.message && e.message.includes("quota")) {
+            if (e.message && /quota/i.test(e.message)) {
                 setState(prev => ({ ...prev, quotaExceeded: true }));
-                console.warn("YouTube API quota exceeded.");
+                console.warn("YouTube API quota exceeded. Switching to fallback mode.");
 
                 // 1. Try to use cached data
                 if (state.cache?.channelStats?.data) {
@@ -925,6 +1131,82 @@ export function useDashboardState() {
         }
     }
 
+    function rescheduleVideo(videoId, newDate) {
+        setState(prev => ({
+            ...prev,
+            uploadQueue: prev.uploadQueue.map(item =>
+                item.id === videoId
+                    ? { ...item, scheduledAt: new Date(newDate).toISOString() }
+                    : item
+            )
+        }));
+    }
+
+    function moveVideoInHistory(videoId, fromDate, toDate) {
+        setState(prev => {
+            const safeHistory = prev.history || {};
+            const fromDayData = safeHistory[fromDate];
+
+            if (!fromDayData || !fromDayData.completedItems) return prev;
+
+            const videoToMove = fromDayData.completedItems.find(item => item.id === videoId);
+            if (!videoToMove) return prev;
+
+            // Remove from old date
+            const newFromDayItems = fromDayData.completedItems.filter(item => item.id !== videoId);
+
+            // Add to new date
+            const toDayData = safeHistory[toDate] || { completedItems: [], uploads: 0 };
+            const newToDayItems = [...(toDayData.completedItems || []), videoToMove];
+
+            return {
+                ...prev,
+                history: {
+                    ...safeHistory,
+                    [fromDate]: {
+                        ...fromDayData,
+                        completedItems: newFromDayItems,
+                        uploads: newFromDayItems.filter(i => i.type === 'youtube_video').length
+                    },
+                    [toDate]: {
+                        ...toDayData,
+                        completedItems: newToDayItems,
+                        uploads: newToDayItems.filter(i => i.type === 'youtube_video').length
+                    }
+                }
+            };
+        });
+    }
+
+    function updateVideoMetadata(videoId, metadata) {
+        setState(prev => {
+            // Update in upload queue
+            const newQueue = prev.uploadQueue.map(item =>
+                item.id === videoId ? { ...item, ...metadata } : item
+            );
+
+            // Update in history
+            const newHistory = { ...prev.history };
+            Object.keys(newHistory).forEach(date => {
+                const dayData = newHistory[date];
+                if (dayData.completedItems) {
+                    newHistory[date] = {
+                        ...dayData,
+                        completedItems: dayData.completedItems.map(item =>
+                            item.id === videoId ? { ...item, ...metadata } : item
+                        )
+                    };
+                }
+            });
+
+            return {
+                ...prev,
+                uploadQueue: newQueue,
+                history: newHistory
+            };
+        });
+    }
+
     function resetState() {
         setState(defaultData);
     }
@@ -947,7 +1229,10 @@ export function useDashboardState() {
             checkOpusJob,
             removeOpusJob,
             refreshChannelStats,
-            removeHistoryItem
+            removeHistoryItem,
+            rescheduleVideo,
+            moveVideoInHistory,
+            updateVideoMetadata
         }
     };
 }

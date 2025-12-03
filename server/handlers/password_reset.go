@@ -10,13 +10,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PasswordResetHandler struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewPasswordResetHandler(db *pgx.Conn) *PasswordResetHandler {
+func NewPasswordResetHandler(db *pgxpool.Pool) *PasswordResetHandler {
 	return &PasswordResetHandler{db: db}
 }
 

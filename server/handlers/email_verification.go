@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,13 +10,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type EmailVerificationHandler struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
-func NewEmailVerificationHandler(db *sql.DB) *EmailVerificationHandler {
+func NewEmailVerificationHandler(db *pgxpool.Pool) *EmailVerificationHandler {
 	return &EmailVerificationHandler{db: db}
 }
 
@@ -33,13 +34,13 @@ func (h *EmailVerificationHandler) VerifyEmail(c *gin.Context) {
 
 	// Find verification record
 	var verification models.Verification
-	err := h.db.QueryRowContext(ctx, `
+	err := h.db.QueryRow(ctx, `
 		SELECT id, identifier, value, expires_at
 		FROM verification
 		WHERE value = $1 AND expires_at > NOW()
 	`, token).Scan(&verification.ID, &verification.Identifier, &verification.Value, &verification.ExpiresAt)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired verification token"})
 		return
 	}
@@ -50,7 +51,7 @@ func (h *EmailVerificationHandler) VerifyEmail(c *gin.Context) {
 	}
 
 	// Update user's email_verified status
-	_, err = h.db.ExecContext(ctx, `
+	_, err = h.db.Exec(ctx, `
 		UPDATE "user"
 		SET email_verified = true
 		WHERE email = $1
@@ -63,7 +64,7 @@ func (h *EmailVerificationHandler) VerifyEmail(c *gin.Context) {
 	}
 
 	// Delete used verification token
-	_, err = h.db.ExecContext(ctx, `
+	_, err = h.db.Exec(ctx, `
 		DELETE FROM verification WHERE id = $1
 	`, verification.ID)
 
@@ -93,13 +94,13 @@ func (h *EmailVerificationHandler) ResendVerification(c *gin.Context) {
 
 	// Check if user exists
 	var user models.User
-	err := h.db.QueryRowContext(ctx, `
+	err := h.db.QueryRow(ctx, `
 		SELECT id, email, email_verified
 		FROM "user"
 		WHERE email = $1
 	`, req.Email).Scan(&user.ID, &user.Email, &user.EmailVerified)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		// Don't reveal if email exists or not for security
 		c.JSON(http.StatusOK, gin.H{
 			"message": "If the email exists, a verification link has been sent",
@@ -119,7 +120,7 @@ func (h *EmailVerificationHandler) ResendVerification(c *gin.Context) {
 	}
 
 	// Delete any existing verification tokens for this email
-	_, err = h.db.ExecContext(ctx, `
+	_, err = h.db.Exec(ctx, `
 		DELETE FROM verification WHERE identifier = $1
 	`, user.Email)
 	if err != nil {
@@ -132,7 +133,7 @@ func (h *EmailVerificationHandler) ResendVerification(c *gin.Context) {
 	expiresAt := time.Now().Add(24 * time.Hour)
 
 	// Store verification token
-	_, err = h.db.ExecContext(ctx, `
+	_, err = h.db.Exec(ctx, `
 		INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, NOW(), NOW())
 	`, uuid.New().String(), user.Email, verificationToken, expiresAt)

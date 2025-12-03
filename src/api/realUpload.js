@@ -49,7 +49,7 @@
  *    Headers: Authorization: Bearer <token>
  * 4. Trate a resposta e retorne a URL do vídeo.
  */
-export async function uploadToYouTube({ file, title, description, token, publishAt }) {
+export async function uploadToYouTube({ file, title, description, token, privacyStatus = "private", publishAt }) {
   if (!token) {
     return { status: "error", error: "Token de acesso não fornecido. Conecte sua conta nas configurações." };
   }
@@ -63,11 +63,14 @@ export async function uploadToYouTube({ file, title, description, token, publish
         categoryId: "22", // People & Blogs
       },
       status: {
-        privacyStatus: "private", // Default to private for safety
-        publishAt: token.publishAt || undefined, // Add scheduling if provided
+        // CRITICAL: If publishAt is set, privacyStatus MUST be 'private'
+        privacyStatus: publishAt ? "private" : privacyStatus,
+        publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
         selfDeclaredMadeForKids: false,
       },
     };
+
+    console.log("[YouTube Upload] Metadata:", JSON.stringify(metadata, null, 2));
 
     const form = new FormData();
     form.append(
@@ -90,7 +93,7 @@ export async function uploadToYouTube({ file, title, description, token, publish
     const data = await res.json();
 
     if (!res.ok) {
-      console.error("YouTube Upload Error:", data);
+      console.error("YouTube Upload Error Full:", JSON.stringify(data, null, 2));
       return {
         status: "error",
         error: data.error?.message || "Erro desconhecido no upload para o YouTube."

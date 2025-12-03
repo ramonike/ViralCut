@@ -78,12 +78,22 @@ export function SidebarLeft({ state, actions }) {
                     <div className="relative">
                         <div className="w-10 h-10 rounded-full bg-surface-800 border border-surface-700 overflow-hidden">
                             {channelStats?.thumbnails?.default?.url ? (
-                                <img src={channelStats.thumbnails.default.url} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold">
-                                    {settings.channelName?.[0] || "U"}
-                                </div>
-                            )}
+                                <img
+                                    src={channelStats.thumbnails.default.url}
+                                    alt="Avatar"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex'; // Show fallback div
+                                    }}
+                                />
+                            ) : null}
+                            <div
+                                className="w-full h-full flex items-center justify-center text-slate-500 font-bold absolute inset-0 bg-surface-800"
+                                style={{ display: channelStats?.thumbnails?.default?.url ? 'none' : 'flex' }}
+                            >
+                                {settings.channelName?.[0] || channelStats?.title?.[0] || "U"}
+                            </div>
                         </div>
                         <div className="absolute -bottom-1 -right-1 bg-surface-900 rounded-full p-0.5">
                             <div className="w-3 h-3 bg-green-500 rounded-full border-2 border-surface-900"></div>

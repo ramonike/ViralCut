@@ -2,7 +2,7 @@ import React from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { Button } from '../ui/button';
 
-export function GoogleAuthButton({ onLoginSuccess, onLoginError }) {
+export function GoogleAuthButton({ onLoginSuccess, onLoginError, text = "Conectar YouTube", className, variant = "secondary" }) {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     console.log('[GoogleAuthButton] Client ID:', clientId ? 'CONFIGURED' : 'MISSING');
@@ -42,10 +42,10 @@ export function GoogleAuthButton({ onLoginSuccess, onLoginError }) {
                 console.log('[GoogleAuthButton] Login button clicked');
                 login();
             }}
-            variant="secondary"
-            className="w-full sm:w-auto"
+            variant={variant}
+            className={`w-full sm:w-auto ${className || ''}`}
         >
-            Conectar YouTube
+            {text}
         </Button>
     );
 }

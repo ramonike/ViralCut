@@ -2,72 +2,72 @@ import React, { useState } from 'react';
 import { API_ENDPOINTS, API_URL } from '../config/api';
 
 const EmailVerificationBanner = ({ userEmail }) => {
-    const [isResending, setIsResending] = useState(false);
-    const [message, setMessage] = useState('');
-    const [isDismissed, setIsDismissed] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [message, setMessage] = useState('');
+  const [isDismissed, setIsDismissed] = useState(false);
 
-    if (isDismissed) return null;
+  if (isDismissed) return null;
 
-    const handleResend = async () => {
-        setIsResending(true);
-        setMessage('');
+  const handleResend = async () => {
+    setIsResending(true);
+    setMessage('');
 
-        try {
-            const response = await fetch(API_ENDPOINTS.AUTH.RESEND_VERIFICATION, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include',
-                body: JSON.stringify({ email: userEmail }),
-            });
+    try {
+      const response = await fetch(API_ENDPOINTS.AUTH.RESEND_VERIFICATION, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email: userEmail }),
+      });
 
-            const data = await response.json();
+      const data = await response.json();
 
-            if (response.ok) {
-                setMessage('✓ Email de verificação enviado! Verifique sua caixa de entrada.');
-            } else {
-                setMessage('✕ ' + (data.error || 'Erro ao enviar email.'));
-            }
-        } catch (error) {
-            setMessage('✕ Erro ao enviar email. Tente novamente.');
-            console.error(error);
-        } finally {
-            setIsResending(false);
-        }
-    };
+      if (response.ok) {
+        setMessage('✓ Email de verificação enviado! Verifique sua caixa de entrada.');
+      } else {
+        setMessage('✕ ' + (data.error || 'Erro ao enviar email.'));
+      }
+    } catch (error) {
+      setMessage('✕ Erro ao enviar email. Tente novamente.');
+      console.error(error);
+    } finally {
+      setIsResending(false);
+    }
+  };
 
-    return (
-        <div className="email-verification-banner">
-            <div className="banner-content">
-                <div className="banner-icon">📧</div>
-                <div className="banner-text">
-                    <strong>Email não verificado</strong>
-                    <p>Por favor, verifique seu email para ter acesso completo.</p>
-                </div>
-                <div className="banner-actions">
-                    <button
-                        onClick={handleResend}
-                        disabled={isResending}
-                        className="resend-btn"
-                    >
-                        {isResending ? 'Enviando...' : 'Reenviar Email'}
-                    </button>
-                    <button
-                        onClick={() => setIsDismissed(true)}
-                        className="dismiss-btn"
-                    >
-                        ✕
-                    </button>
-                </div>
-            </div>
-            {message && (
-                <div className={`banner-message ${message.startsWith('✓') ? 'success' : 'error'}`}>
-                    {message}
-                </div>
-            )}
+  return (
+    <div className="email-verification-banner">
+      <div className="banner-content">
+        <div className="banner-icon">📧</div>
+        <div className="banner-text">
+          <strong>Email não verificado</strong>
+          <p>Por favor, verifique seu email para ter acesso completo.</p>
+        </div>
+        <div className="banner-actions">
+          <button
+            onClick={handleResend}
+            disabled={isResending}
+            className="resend-btn"
+          >
+            {isResending ? 'Enviando...' : 'Reenviar Email'}
+          </button>
+          <button
+            onClick={() => setIsDismissed(true)}
+            className="dismiss-btn"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+      {message && (
+        <div className={`banner-message ${message.startsWith('✓') ? 'success' : 'error'}`}>
+          {message}
+        </div>
+      )}
 
-            <style jsx>{`
+      <style>{`
         .email-verification-banner {
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
@@ -159,8 +159,8 @@ const EmailVerificationBanner = ({ userEmail }) => {
           background: rgba(255, 0, 0, 0.2);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default EmailVerificationBanner;

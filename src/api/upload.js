@@ -8,15 +8,19 @@ import { uploadToYouTube } from "./realUpload";
  * @returns {Promise<{status: string, url?: string, error?: string}>}
  */
 export async function uploadVideo(item, token, file) {
+  console.log("[uploadVideo] Token:", token);
+  console.log("[uploadVideo] Is Mock?", token && token.startsWith("MOCK_TOKEN"));
+
   // Se for YouTube e tiver token e arquivo, tenta upload real
   // Mas se o token for "MOCK_TOKEN", força a simulação
-  if (item.platform === "YouTube Shorts" && token && token !== "MOCK_TOKEN" && file) {
+  if (item.platform === "YouTube Shorts" && token && !token.startsWith("MOCK_TOKEN") && file) {
     return await uploadToYouTube({
       file: file,
       title: item.title,
       description: item.description,
       token: token,
-      publishAt: item.scheduledAt
+      privacyStatus: item.privacyStatus,
+      publishAt: item.publishAt // YouTube scheduling (distinct from dashboard upload schedule)
     });
   }
 

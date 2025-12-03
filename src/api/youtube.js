@@ -47,6 +47,12 @@ export async function fetchChannelDetails(token) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("[YouTube API] Error response:", errorText);
+
+            // Only treat as quota error if explicitly mentioned in response
+            if (errorText.includes("quotaExceeded")) {
+                throw new Error("YouTube API Error: Quota Exceeded");
+            }
+
             throw new Error(`YouTube API Error: ${response.statusText}`);
         }
 
@@ -117,6 +123,10 @@ export async function fetchChannelVideos(token, maxResults = 50) {
         );
 
         if (!channelResponse.ok) {
+            const errorText = await channelResponse.text();
+            if (errorText.includes("quotaExceeded")) {
+                throw new Error("YouTube API Error: Quota Exceeded");
+            }
             throw new Error(`Failed to fetch channel: ${channelResponse.statusText}`);
         }
 
@@ -142,6 +152,10 @@ export async function fetchChannelVideos(token, maxResults = 50) {
         );
 
         if (!videosResponse.ok) {
+            const errorText = await videosResponse.text();
+            if (errorText.includes("quotaExceeded")) {
+                throw new Error("YouTube API Error: Quota Exceeded");
+            }
             throw new Error(`Failed to fetch videos: ${videosResponse.statusText}`);
         }
 
@@ -243,6 +257,9 @@ export async function fetchChannelAnalytics(token) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("[YouTube API] Analytics error:", errorText);
+            if (errorText.includes("quotaExceeded")) {
+                throw new Error("Analytics API Error: Quota Exceeded");
+            }
             throw new Error(`Analytics API Error: ${response.statusText}`);
         }
 
@@ -280,27 +297,34 @@ export async function searchVideos(token, query = "ciência curiosidades podcast
                 title: "O Universo Explicado - Podcast Ciência #42",
                 channelTitle: "Ciência Todo Dia",
                 thumbnails: { medium: { url: "https://picsum.photos/seed/science1/320/180" } },
-                url: "https://youtube.com/watch?v=mock_search_1"
+                url: "https://youtube.com/watch?v=mock_search_1",
+                viewCount: "154000",
+                likeCount: "12000"
             },
             {
                 id: "mock_search_2",
                 title: "Mistérios do Cérebro Humano",
                 channelTitle: "NeuroCiência",
                 thumbnails: { medium: { url: "https://picsum.photos/seed/science2/320/180" } },
-                url: "https://youtube.com/watch?v=mock_search_2"
+                url: "https://youtube.com/watch?v=mock_search_2",
+                viewCount: "89000",
+                likeCount: "5400"
             },
             {
                 id: "mock_search_3",
                 title: "Física Quântica para Iniciantes",
                 channelTitle: "Física Fácil",
                 thumbnails: { medium: { url: "https://picsum.photos/seed/science3/320/180" } },
-                url: "https://youtube.com/watch?v=mock_search_3"
+                url: "https://youtube.com/watch?v=mock_search_3",
+                viewCount: "210000",
+                likeCount: "18000"
             }
         ];
     }
 
     try {
-        const response = await fetch(
+        // 1. Search for videos
+        const searchResponse = await fetch(
             `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&videoDuration=medium`,
             {
                 headers: {
@@ -310,23 +334,62 @@ export async function searchVideos(token, query = "ciência curiosidades podcast
             }
         );
 
-        if (!response.ok) {
-            throw new Error(`Search API Error: ${response.statusText}`);
+        if (!searchResponse.ok) {
+            const errorText = await searchResponse.text();
+            if (errorText.includes("quotaExceeded")) {
+                throw new Error("Search API Error: Quota Exceeded");
+            }
+            throw new Error(`Search API Error: ${searchResponse.statusText}`);
         }
 
-        const data = await response.json();
-        console.log("[YouTube API] Search results:", data);
+        const searchData = await searchResponse.json();
 
-        return (data.items || []).map(item => ({
-            id: item.id.videoId,
-            title: item.snippet.title,
-            channelTitle: item.snippet.channelTitle,
-            thumbnails: item.snippet.thumbnails,
-            url: `https://youtube.com/watch?v=${item.id.videoId}`
-        }));
+        if (!searchData.items || searchData.items.length === 0) {
+            return [];
+        }
+
+        // 2. Get video IDs to fetch statistics
+        const videoIds = searchData.items.map(item => item.id.videoId).join(',');
+
+        // 3. Fetch statistics
+        const statsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    Accept: "application/json",
+                },
+            }
+        );
+
+        const statsData = await statsResponse.json();
+        const statsMap = {};
+
+        if (statsData.items) {
+            statsData.items.forEach(item => {
+                statsMap[item.id] = item.statistics;
+            });
+        }
+
+        console.log("[YouTube API] Search results with stats:", searchData);
+
+        return searchData.items.map(item => {
+            const videoId = item.id.videoId;
+            const stats = statsMap[videoId] || {};
+
+            return {
+                id: videoId,
+                title: item.snippet.title,
+                channelTitle: item.snippet.channelTitle,
+                thumbnails: item.snippet.thumbnails,
+                url: `https://youtube.com/watch?v=${videoId}`,
+                viewCount: stats.viewCount,
+                likeCount: stats.likeCount
+            };
+        });
 
     } catch (error) {
         console.error("[YouTube API] Failed to search videos:", error);
-        return [];
+        throw error;
     }
 }

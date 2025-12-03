@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,17 +10,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
-var db *pgx.Conn
+var db *pgxpool.Pool
 
 func main() {
 	// Load .env file
-	// We try to load from the current directory or parent directory since we are in /server
 	if err := godotenv.Load(); err != nil {
-		// Try loading from parent directory if not found in current
 		if err := godotenv.Load("../.env"); err != nil {
 			log.Println("No .env file found, relying on system environment variables")
 		}
@@ -34,36 +31,28 @@ func main() {
 	}
 
 	// Parse configuration
-	config, err := pgx.ParseConfig(dbUrl)
+	config, err := pgxpool.ParseConfig(dbUrl)
 	if err != nil {
 		log.Fatalf("Unable to parse database URL: %v\n", err)
 	}
 
 	// For Supabase Transaction Pooler (port 6543), we must use simple protocol
-	// because it doesn't support prepared statements
-	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
-	db, err = pgx.ConnectConfig(context.Background(), config)
+	// Create connection pool
+	db, err = pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		log.Printf("Failed to connect to database: %v\n", err)
-		log.Println("\nTroubleshooting tips:")
-		log.Println("1. Check if your Supabase project is PAUSED (go to dashboard and click 'Restore project')")
-		log.Println("2. Verify DATABASE_URL format in .env:")
-		log.Println("   - Transaction mode (port 6543): postgres://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:6543/postgres")
-		log.Println("   - Session mode (port 5432): postgres://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres")
-		log.Println("3. Ensure password is correct (reset in Project Settings > Database if needed)")
 		os.Exit(1)
 	}
-	defer db.Close(context.Background())
+	defer db.Close()
 
-	fmt.Println("Connected to Supabase PostgreSQL successfully!")
-
-	// Create database/sql connection for email verification handler
-	dbSQL, err := sql.Open("pgx", dbUrl)
-	if err != nil {
-		log.Fatalf("Failed to create SQL connection: %v\n", err)
+	// Test connection
+	if err := db.Ping(context.Background()); err != nil {
+		log.Fatalf("Failed to ping database: %v\n", err)
 	}
-	defer dbSQL.Close()
+
+	fmt.Println("Connected to Supabase PostgreSQL successfully (via pgxpool)!")
 
 	// Initialize Gin router
 	r := gin.Default()
@@ -71,16 +60,13 @@ func main() {
 	// CORS Middleware
 	r.Use(func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-
-		// Allow localhost for development and Vercel for production
 		allowedOrigins := []string{
 			"http://localhost:5173",
-			"http://localhost:5174", // Vite alternate port
+			"http://localhost:5174",
 			"http://localhost:3000",
-			"https://viral-cut-kappa.vercel.app", // Atualize com sua URL da Vercel
+			"https://viral-cut-kappa.vercel.app",
 		}
 
-		// Check if origin is allowed
 		isAllowed := false
 		for _, allowed := range allowedOrigins {
 			if origin == allowed {
@@ -108,7 +94,8 @@ func main() {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(db)
 	passwordResetHandler := handlers.NewPasswordResetHandler(db)
-	emailVerificationHandler := handlers.NewEmailVerificationHandler(dbSQL)
+	emailVerificationHandler := handlers.NewEmailVerificationHandler(db)
+	adminHandler := handlers.NewAdminHandler(db)
 
 	// Auth routes
 	r.POST("/api/auth/sign-up", authHandler.SignUp)
@@ -124,7 +111,21 @@ func main() {
 	r.GET("/api/auth/verify-email", emailVerificationHandler.VerifyEmail)
 	r.POST("/api/auth/resend-verification", emailVerificationHandler.ResendVerification)
 
-	// Ping endpoint (for health checks)
+	// Admin routes
+	r.GET("/api/admin/users", adminHandler.GetUsers)
+
+	// Test user table endpoint
+	r.GET("/test-users", func(c *gin.Context) {
+		var count int
+		err := db.QueryRow(context.Background(), `SELECT COUNT(*) FROM "user"`).Scan(&count)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"count": count, "message": "User table accessible"})
+	})
+
+	// Ping endpoint
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",

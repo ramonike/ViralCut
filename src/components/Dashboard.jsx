@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { API_ENDPOINTS, API_URL } from '../config/api';
-import { PlusCircle, LayoutDashboard, UserCircle, Lock, Share2, Check } from "lucide-react";
+import { PlusCircle, LayoutDashboard, UserCircle, Lock, Share2, Check, Shield } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { FloatingCTA } from "./ui/FloatingCTA";
@@ -121,6 +121,14 @@ export default function Dashboard() {
                                     </div>
                                 )}
                             </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.location.href = '/admin'}
+                                className="text-slate-400 hover:text-white hover:bg-slate-800"
+                            >
+                                <Shield className="w-4 h-4 mr-2" /> Admin
+                            </Button>
                         </nav>
 
                         {/* Actions */}

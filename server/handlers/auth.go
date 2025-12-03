@@ -9,13 +9,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AuthHandler struct {
-	db *pgx.Conn
+	db *pgxpool.Pool
 }
 
-func NewAuthHandler(db *pgx.Conn) *AuthHandler {
+func NewAuthHandler(db *pgxpool.Pool) *AuthHandler {
 	return &AuthHandler{db: db}
 }
 
