@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { FloatingCTA } from "./ui/FloatingCTA";
 import { useDashboardState } from "../hooks/useDashboardState";
+import { useSupabaseDashboard } from "../hooks/useSupabaseDashboard";
 import { SidebarLeft } from "./dashboard/SidebarLeft";
 import { SidebarRight } from "./dashboard/SidebarRight";
 import { ChecklistSection } from "./dashboard/ChecklistSection";
@@ -14,6 +15,7 @@ import EmailVerificationBanner from "./EmailVerificationBanner";
 
 export default function Dashboard() {
     const { state, actions } = useDashboardState();
+    const supabase = useSupabaseDashboard(); // Supabase integration for upload queue
     const [shareLink, setShareLink] = useState("");
     const [message, setMessage] = useState("");
     const [activeTab, setActiveTab] = useState("dashboard");
@@ -66,6 +68,67 @@ export default function Dashboard() {
     function seedExample() {
         actions.addToUploadQueue({ title: "Cachorro salva dono em 10s — impossível não rir", source: "clipper", platform: "YouTube Shorts", scheduledAt: new Date().toISOString() });
     }
+
+    // Hybrid actions: Use Supabase when available, fallback to localStorage
+    const hybridActions = {
+        ...actions,
+        addToUploadQueue: async (item) => {
+            if (supabase.user && !supabase.loading) {
+                // Use Supabase for authenticated users
+                try {
+                    await supabase.actions.addToQueue(item);
+                } catch (error) {
+                    console.error('Supabase upload failed, falling back to localStorage:', error);
+                    actions.addToUploadQueue(item);
+                }
+            } else {
+                // Fallback to localStorage
+                actions.addToUploadQueue(item);
+            }
+        },
+        moveVideoInHistory: async (fromDate, toDate, videoId) => {
+            if (supabase.user && !supabase.loading) {
+                try {
+                    // In Supabase, just update the date field
+                    // The video is identified by its ID, not by date
+                    // This would require a new helper function in supabase.js
+                    // For now, fallback to localStorage
+                    actions.moveVideoInHistory(fromDate, toDate, videoId);
+                } catch (error) {
+                    console.error('Supabase move failed, falling back to localStorage:', error);
+                    actions.moveVideoInHistory(fromDate, toDate, videoId);
+                }
+            } else {
+                actions.moveVideoInHistory(fromDate, toDate, videoId);
+            }
+        },
+        removeHistoryItem: async (date, videoId) => {
+            if (supabase.user && !supabase.loading) {
+                try {
+                    // Would need deleteVideoHistory helper
+                    // For now, fallback
+                    actions.removeHistoryItem(date, videoId);
+                } catch (error) {
+                    console.error('Supabase delete failed, falling back to localStorage:', error);
+                    actions.removeHistoryItem(date, videoId);
+                }
+            } else {
+                actions.removeHistoryItem(date, videoId);
+            }
+        },
+        updateSettings: async (newSettings) => {
+            if (supabase.user && !supabase.loading) {
+                try {
+                    await supabase.actions.saveSettings(newSettings);
+                } catch (error) {
+                    console.error('Supabase settings save failed, falling back to localStorage:', error);
+                    actions.updateSettings(newSettings);
+                }
+            } else {
+                actions.updateSettings(newSettings);
+            }
+        }
+    };
 
     // Check if "Create Google Account" checklist item is done
     const setupChecklist = state.checklists.find(c => c.id === "setup");
@@ -195,12 +258,25 @@ export default function Dashboard() {
                         {/* Main Content */}
                         <section className="lg:col-span-6 flex flex-col gap-4 md:gap-6">
                             <ChecklistSection state={state} actions={actions} />
-                            <PipelineSection state={state} actions={actions} />
+                            <PipelineSection
+                                state={{
+                                    ...state,
+                                    uploadQueue: supabase.user ? supabase.uploadQueue : state.uploadQueue
+                                }}
+                                actions={hybridActions}
+                            />
                         </section>
 
                         {/* Right Sidebar */}
                         <div className="lg:col-span-3">
-                            <SidebarRight state={state} actions={actions} />
+                            <SidebarRight
+                                state={{
+                                    ...state,
+                                    uploadQueue: supabase.user ? supabase.uploadQueue : state.uploadQueue,
+                                    history: supabase.user ? supabase.history : state.history
+                                }}
+                                actions={hybridActions}
+                            />
                         </div>
                     </div>
                 ) : (

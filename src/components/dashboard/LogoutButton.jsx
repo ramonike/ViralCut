@@ -1,5 +1,5 @@
 import { LogOut } from "lucide-react";
-import { API_ENDPOINTS, API_URL } from '../../config/api';
+import { API_ENDPOINTS } from '../../config/api';
 import { useNavigate } from "react-router-dom";
 
 export function LogoutButton() {
@@ -13,6 +13,9 @@ export function LogoutButton() {
             });
 
             if (response.ok) {
+                // Clear localStorage to prevent data leakage between users
+                localStorage.clear();
+
                 // Redirect to login page
                 navigate("/login");
             } else {
